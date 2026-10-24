@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import {
   Pressable,
-  StyleSheet,
   Text,
   TextInput,
   View,
+  type TextStyle,
+  type ViewStyle,
   type TextInputProps,
 } from 'react-native';
 import { SvgXml } from 'react-native-svg';
 
 import { Icons } from '@/constants/icons';
-import { FontFamily, Palette, Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
+import type { Palette, Theme } from '@/constants/theme';
 
 type FieldProps = TextInputProps & {
   label: string;
@@ -19,20 +21,21 @@ type FieldProps = TextInputProps & {
 };
 
 export function Field({ label, error, required, style, onFocus, onBlur, ...rest }: FieldProps) {
+  const { palette, radius, space, fontFamily } = useTheme();
   const isPassword = Boolean(rest.secureTextEntry);
   const [passwordVisible, setPasswordVisible] = useState(false);
   const [focused, setFocused] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.label}>
+    <View style={styles.container(space)}>
+      <Text style={styles.label(palette, fontFamily)}>
         {label}
-        {required && <Text style={styles.required}> *</Text>}
+        {required && <Text style={styles.required(palette)}> *</Text>}
       </Text>
       <View style={styles.inputWrap}>
         <TextInput
-          placeholderTextColor={Palette.faint}
-          selectionColor={Palette.teal}
+          placeholderTextColor={palette.faint}
+          selectionColor={palette.teal}
           onFocus={(e) => {
             setFocused(true);
             onFocus?.(e);
@@ -42,8 +45,8 @@ export function Field({ label, error, required, style, onFocus, onBlur, ...rest 
             onBlur?.(e);
           }}
           style={[
-            styles.input,
-            { borderColor: error ? Palette.risk : focused ? Palette.teal : Palette.line },
+            styles.input(palette, radius),
+            { borderColor: error ? palette.risk : focused ? palette.teal : palette.line },
             isPassword && styles.passwordInput,
             style,
           ]}
@@ -57,55 +60,59 @@ export function Field({ label, error, required, style, onFocus, onBlur, ...rest 
             hitSlop={8}
             onPress={() => setPasswordVisible((v) => !v)}
             style={styles.eyeToggle}>
-            <SvgXml xml={passwordVisible ? Icons.EYE_OFF : Icons.EYE} width={18} height={18} />
+            <SvgXml
+              xml={(passwordVisible ? Icons.EYE_OFF : Icons.EYE).replace(/stroke="[^"]*"/g, `stroke="${palette.muted}"`)}
+              width={18}
+              height={18}
+            />
           </Pressable>
         )}
       </View>
-      {error && <Text style={styles.error}>{error}</Text>}
+      {error && <Text style={styles.error(palette, fontFamily)}>{error}</Text>}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const styles = {
+  container: (space: Theme['space']): ViewStyle => ({
     gap: 6,
-    marginBottom: Space.lg,
-  },
-  label: {
-    fontFamily: FontFamily.medium,
+    marginBottom: space.lg,
+  }),
+  label: (palette: Palette, fontFamily: Theme['fontFamily']): TextStyle => ({
+    fontFamily: fontFamily.medium,
     fontSize: 13,
-    color: Palette.muted,
+    color: palette.muted,
     paddingLeft: 2,
-  },
-  required: { color: Palette.risk },
+  }),
+  required: (palette: Palette): TextStyle => ({ color: palette.risk }),
   inputWrap: {
     position: 'relative',
-  },
-  input: {
+  } as ViewStyle,
+  input: (palette: Palette, radius: Theme['radius']): TextStyle => ({
     minHeight: 48,
     borderWidth: 1,
-    borderRadius: Radius.md,
-    backgroundColor: Palette.surface,
+    borderRadius: radius.md,
+    backgroundColor: palette.surface,
     paddingHorizontal: 14,
     paddingVertical: 12,
-    fontFamily: FontFamily.regular,
+    fontFamily: 'InterRegular',
     fontSize: 15,
-    color: Palette.ink,
-  },
+    color: palette.ink,
+  }),
   passwordInput: {
     paddingRight: 44,
-  },
+  } as TextStyle,
   eyeToggle: {
     position: 'absolute',
     right: 14,
     top: 0,
     bottom: 0,
     justifyContent: 'center',
-  },
-  error: {
-    fontFamily: FontFamily.regular,
-    color: Palette.risk,
+  } as ViewStyle,
+  error: (palette: Palette, fontFamily: Theme['fontFamily']): TextStyle => ({
+    fontFamily: fontFamily.regular,
+    color: palette.risk,
     fontSize: 12,
     paddingLeft: 2,
-  },
-});
+  }),
+};

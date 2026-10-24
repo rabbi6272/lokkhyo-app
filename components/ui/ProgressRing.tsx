@@ -1,7 +1,7 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native';
 import Svg, { Circle, Line } from 'react-native-svg';
-
-import { FontFamily, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
+import type { Palette } from '@/constants/theme';
 
 type ProgressRingProps = {
   percent: number;
@@ -17,7 +17,16 @@ type ProgressRingProps = {
  * Lokkhyo's signature mark: progress as a ring with its target drawn on it.
  * Starts at 12 o'clock and runs clockwise; the tick shows the line to reach.
  */
-export function ProgressRing({ percent, size = 48, color = Palette.teal, target, showValue = true }: ProgressRingProps) {
+export function ProgressRing({
+  percent,
+  size = 48,
+  color,
+  target,
+  showValue = true,
+}: ProgressRingProps) {
+  const { palette } = useTheme();
+  const ringColor = color ?? palette.teal;
+
   const value = Math.min(100, Math.max(0, percent));
   const stroke = Math.max(3, Math.round(size / 12));
   const radius = (size - stroke) / 2 - 2;
@@ -43,12 +52,12 @@ export function ProgressRing({ percent, size = 48, color = Palette.teal, target,
       accessibilityValue={{ min: 0, max: 100, now: Math.round(value) }}
       style={{ width: size, height: size }}>
       <Svg width={size} height={size}>
-        <Circle cx={center} cy={center} r={radius} stroke={Palette.line} strokeWidth={stroke} fill="none" />
+        <Circle cx={center} cy={center} r={radius} stroke={palette.line} strokeWidth={stroke} fill="none" />
         <Circle
           cx={center}
           cy={center}
           r={radius}
-          stroke={color}
+          stroke={ringColor}
           strokeWidth={stroke}
           fill="none"
           strokeLinecap="round"
@@ -56,12 +65,12 @@ export function ProgressRing({ percent, size = 48, color = Palette.teal, target,
           strokeDashoffset={circumference * (1 - value / 100)}
           transform={`rotate(-90 ${center} ${center})`}
         />
-        {tick && <Line {...tick} stroke={Palette.ink} strokeWidth={2} strokeLinecap="round" />}
+        {tick && <Line {...tick} stroke={palette.ink} strokeWidth={2} strokeLinecap="round" />}
       </Svg>
       {showValue && (
         <View style={StyleSheet.absoluteFill}>
           <View style={styles.center}>
-            <Text style={[styles.value, { fontSize: Math.max(10, Math.round(size * 0.26)) }]}>
+            <Text style={[styles.value(palette), { fontSize: Math.max(10, Math.round(size * 0.26)) }]}>
               {Math.round(value)}
             </Text>
           </View>
@@ -71,7 +80,7 @@ export function ProgressRing({ percent, size = 48, color = Palette.teal, target,
   );
 }
 
-const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  value: { fontFamily: FontFamily.display, color: Palette.ink },
-});
+const styles = {
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' } as ViewStyle,
+  value: (palette: Palette): TextStyle => ({ fontFamily: 'SoraBold', color: palette.ink }),
+};

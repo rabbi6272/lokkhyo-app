@@ -6,7 +6,8 @@ import { useEffect } from 'react';
 import 'react-native-reanimated';
 
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
-import { QueryProvider } from '@/providers/query-provider';
+import { QueryProvider, useIsRestoring } from '@/providers/query-provider';
+import { ThemeProvider, useTheme } from '@/providers/theme-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useRoutines } from '@/hooks/useRoutines';
 import { useScheduledNotifications } from '@/hooks/useScheduledNotifications';
@@ -17,7 +18,9 @@ function RootNavigator() {
   const { user, initializing } = useAuth();
   const { isLoading: isCoursesLoading } = useCourses();
   const { isLoading: isRoutinesLoading } = useRoutines();
+  const { palette } = useTheme();
   useScheduledNotifications();
+  const isRestoring = useIsRestoring();
 
   const [loaded] = useFonts({
     'InterRegular': require('../assets/fonts/Inter-Regular.ttf'),
@@ -28,17 +31,17 @@ function RootNavigator() {
   });
 
   useEffect(() => {
-    if (!initializing && loaded && !isCoursesLoading && !isRoutinesLoading) {
+    if (!initializing && loaded && !isCoursesLoading && !isRoutinesLoading && !isRestoring) {
       SplashScreen.hideAsync();
     }
-  }, [initializing, loaded, isCoursesLoading, isRoutinesLoading]);
+  }, [initializing, loaded, isCoursesLoading, isRoutinesLoading, isRestoring]);
 
-  if (initializing || !loaded) {
-    return <Stack screenOptions={{ headerShown: false }} />;
+  if (initializing || !loaded || isRestoring) {
+    return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }} />;
   }
 
   return (
-    <Stack>
+    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }}>
       <Stack.Protected guard={!!user}>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
@@ -48,6 +51,7 @@ function RootNavigator() {
         <Stack.Screen name="routine/new" options={{ headerShown: false }} />
         <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
         <Stack.Screen name="profile/transcript" options={{ headerShown: false }} />
+        <Stack.Screen name="profile/simulator" options={{ headerShown: false }} />
         <Stack.Screen name="semesters/index" options={{ headerShown: false }} />
         <Stack.Screen name="semesters/[id]" options={{ headerShown: false }} />
         <Stack.Screen name="semesters/new" options={{ headerShown: false }} />
@@ -61,15 +65,26 @@ function RootNavigator() {
   );
 }
 
-export default function RootLayout() {
+function AppWithTheme() {
+  const { resolved } = useTheme();
+  const barStyle = resolved === 'dark' ? 'light-content' : 'dark-content';
+
   return (
     <>
+      <StatusBar barStyle={barStyle} backgroundColor="transparent" translucent />
       <QueryProvider>
         <AuthProvider>
           <RootNavigator />
         </AuthProvider>
       </QueryProvider>
-      <StatusBar barStyle={'dark-content'} />
     </>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <AppWithTheme />
+    </ThemeProvider>
   );
 }

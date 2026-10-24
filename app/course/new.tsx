@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -19,6 +19,7 @@ export default function NewCourseScreen() {
   const { semesterId: semesterParam } = useLocalSearchParams<{ semesterId?: string }>();
   const { createCourse } = useCourses();
   const { semesters } = useSemesters();
+  const { palette } = useTheme();
 
   const [semesterId, setSemesterId] = useState(semesterParam ?? '');
   const [code, setCode] = useState('');
@@ -95,7 +96,7 @@ export default function NewCourseScreen() {
                 />
               ))}
             </ScrollView>
-            {errors.semesterId && <Text style={styles.error}>{errors.semesterId}</Text>}
+            {errors.semesterId && <Text style={[styles.error, { color: palette.risk }]}>{errors.semesterId}</Text>}
           </View>
 
           <View style={styles.section}>
@@ -225,7 +226,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   error: {
-    color: Palette.risk,
     fontSize: 13,
   },
 });

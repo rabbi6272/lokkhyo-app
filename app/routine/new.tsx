@@ -1,5 +1,5 @@
 import { useRouter } from 'expo-router';
-import { Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -19,6 +19,7 @@ export default function NewRoutineSlotScreen() {
   const router = useRouter();
   const { createRoutineSlot } = useRoutines();
   const { courses } = useCourses();
+  const { palette } = useTheme();
 
   const [dayOfWeek, setDayOfWeek] = useState<number>(getTodayOfWeek());
   const [courseId, setCourseId] = useState('');
@@ -92,7 +93,7 @@ export default function NewRoutineSlotScreen() {
                 ))}
               </ScrollView>
             )}
-            {errors.courseId ? <Text style={styles.error}>{errors.courseId}</Text> : null}
+            {errors.courseId ? <Text style={[styles.error, { color: palette.risk }]}>{errors.courseId}</Text> : null}
           </View>
 
           <Field
@@ -152,7 +153,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   error: {
-    color: Palette.risk,
     fontSize: 13,
   },
 });

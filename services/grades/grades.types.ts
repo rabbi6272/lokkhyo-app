@@ -1,5 +1,5 @@
 /**
- * Wire types for the GPA engine — mirror `lokkhyo_server/schemas/{grade,result}.ts`.
+ * Wire types for the GPA engine — mirror `lokkhyo-server/schemas/{grade,result}.ts`.
  * Grades are server-authoritative: the app displays these, it never derives them.
  */
 
@@ -16,6 +16,7 @@ export type ClassificationDto =
 export interface CgpaDto {
   cgpa: number | null;
   totalCredits: number;
+  totalWeightedPoints: number;
   coursesCounted: number;
 }
 
@@ -65,18 +66,24 @@ export interface TranscriptDto {
   cgpa: number | null;
 }
 
+export interface GradeBandDto {
+  letterGrade: LetterGradeDto;
+  minPercentage: number | null;
+  gradePoint: number | null;
+  countsTowardGPA: boolean;
+  countsAsEarnedCredit: boolean;
+}
+
+export interface ClassificationBoundaryDto {
+  classification: ClassificationDto;
+  minCgpa: number | null;
+}
+
 /** `GET /grading-scale` */
 export interface GradingScaleDto {
-  scale: string;
-  bands: {
-    letterGrade: string;
-    minPercentage: number | null;
-    gradePoint: number | null;
-    threshold: string | null;
-    countsAsEarnedCredit: boolean;
-    countsTowardGPA: boolean;
-  }[];
+  scale: GradeBandDto[];
   degreeCgpaThreshold: number;
+  classificationBoundaries: ClassificationBoundaryDto[];
 }
 
 export interface ResultDto {

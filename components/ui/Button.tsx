@@ -1,6 +1,5 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
-
-import { FontFamily, Palette, Radius } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
@@ -13,27 +12,28 @@ type ButtonProps = {
   style?: ViewStyle;
 };
 
-const FILL: Record<Variant, string> = {
-  primary: Palette.teal,
-  secondary: Palette.tealSoft,
-  ghost: 'transparent',
-  destructive: Palette.risk,
-};
-
-const LABEL: Record<Variant, string> = {
-  primary: '#FFFFFF',
-  secondary: Palette.teal,
-  ghost: Palette.teal,
-  destructive: '#FFFFFF',
-};
-
-/**
- * Primary is the one main action on a screen; secondary sits beside it;
- * ghost is an inline text action ("Add", "See all"); destructive deletes.
- */
 export function Button({ title, onPress, loading, disabled, variant = 'primary', style }: ButtonProps) {
+  const { palette } = useTheme();
   const isDisabled = disabled || loading;
 
+  const FILL: Record<Variant, string> = {
+    primary: palette.teal,
+    secondary: palette.tealSoft,
+    ghost: 'transparent',
+    destructive: palette.risk,
+  };
+
+  const LABEL: Record<Variant, string> = {
+    primary: palette.onTeal,
+    secondary: palette.teal,
+    ghost: palette.teal,
+    destructive: '#FFFFFF',
+  };
+
+  /**
+   * Primary is the one main action on a screen; secondary sits beside it;
+   * ghost is an inline text action ("Add", "See all"); destructive deletes.
+   */
   return (
     <Pressable
       accessibilityRole="button"
@@ -60,7 +60,7 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
 const styles = StyleSheet.create({
   base: {
     minHeight: 48,
-    borderRadius: Radius.pill,
+    borderRadius: 999,
     paddingHorizontal: 22,
     alignItems: 'center',
     justifyContent: 'center',
@@ -73,5 +73,5 @@ const styles = StyleSheet.create({
   pressed: { transform: [{ scale: 0.98 }], opacity: 0.92 },
   ghostPressed: { opacity: 0.6 },
   disabled: { opacity: 0.45 },
-  label: { fontFamily: FontFamily.semibold, fontSize: 15 },
+  label: { fontFamily: 'InterSemiBold', fontSize: 15 },
 });

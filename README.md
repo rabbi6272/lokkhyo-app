@@ -2,7 +2,9 @@
 
 A mobile academic tracker for university students. Track **continuous assessment (CT) marks**, a **weekly class routine**, **attendance per class**, **upcoming CTs/quizzes** with local reminders, and your **official GPA/CGPA and transcript**.
 
-Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo-router v6** and **TanStack Query v5**. Identity is **Firebase Auth** (`@react-native-firebase/auth`, email/password and Google). All data lives on the **Lokkhyo API** (`../lokkhyo_server`, Next.js + MongoDB). The app no longer uses Firestore.
+Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo-router v6** and **TanStack Query v5**. Identity is **Firebase Auth** (`@react-native-firebase/auth`, email/password and Google). All data lives on the **Lokkhyo API** (`../lokkhyo-server`, Next.js + MongoDB). The app no longer uses Firestore.
+
+> Planning the move to Hono/Bun, Expo Push, offline reads, dark mode, and widgets? See [`../TRANSITION.md`](../TRANSITION.md).
 
 ---
 
@@ -116,7 +118,7 @@ services/notifications/     Local notification scheduling (routine + reminders)
 
 ## Data
 
-The server is the source of truth. See [`../SERVER.md`](../SERVER.md) for every endpoint and [`../architecture.md`](../architecture.md) for the reasoning behind it.
+The server is the source of truth. See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for every endpoint and [`../architecture.md`](../architecture.md) for the reasoning behind it.
 
 | App concept | Server resource |
 | --- | --- |
@@ -155,7 +157,7 @@ The server is the source of truth. See [`../SERVER.md`](../SERVER.md) for every 
 
 ## Getting started
 
-1. **Run the API.** In `../lokkhyo_server`, run `yarn && npx next dev`. See `SERVER.md` for its `.env`.
+1. **Run the API.** In `../lokkhyo-server`, run `yarn && npx next dev`. See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for its `.env`.
 2. **Use one Firebase project.** The app's `google-services.json` and the server's `FIREBASE_SERVICE_ACCOUNT` must belong to the **same Firebase project**. Otherwise the ID tokens won't verify.
 3. **Create `.env`:**
 

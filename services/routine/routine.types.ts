@@ -1,4 +1,4 @@
-/** Wire types for the routine — mirror `lokkhyo_server/schemas/course.ts`. */
+/** Wire types for the routine — mirror `lokkhyo-server/schemas/course.ts`. */
 
 export type DayOfWeekDto =
   | 'SUNDAY'

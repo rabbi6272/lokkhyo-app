@@ -1,4 +1,4 @@
-/** Wire types for deadlines — mirror `lokkhyo_server/schemas/deadline.ts`. */
+/** Wire types for deadlines — mirror `lokkhyo-server/schemas/deadline.ts`. */
 
 import type { AssessmentTypeDto } from '@/services/assessments/assessments.types';
 

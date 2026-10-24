@@ -12,7 +12,10 @@ import {
   NOTIFICATION_TYPE_SERVER_PUSH,
   requestNotificationPermissions,
 } from '@/services/notifications/notificationsCore';
-import { registerThisDevice } from '@/services/devices/devices.services';
+import {
+  isFetchingDevicePushToken,
+  registerThisDevice,
+} from '@/services/devices/devices.services';
 import { syncRoutineNotifications, cancelRoutineNotifications } from '@/services/notifications/routineNotifications';
 import { syncAssessmentReminders, cancelAssessmentReminders } from '@/services/notifications/assessmentReminders';
 
@@ -74,32 +77,36 @@ export function useScheduledNotifications() {
     return () => sub.remove();
   }, []);
 
+  const registeredUserRef = useRef<string | null>(null);
+
   useEffect(() => {
     if (!user) {
+      registeredUserRef.current = null;
       void cancelAll();
       return;
     }
-    void Promise.allSettled([
-      // Register for server push once the user has answered the permission
-      // prompt; the server channel must exist before a push can land in it.
-      requestNotificationPermissions().then(async (granted) => {
+
+    if (registeredUserRef.current !== user.uid) {
+      registeredUserRef.current = user.uid;
+      void requestNotificationPermissions().then(async (granted) => {
         if (!granted) return;
         await ensureNotificationChannels();
         await registerThisDevice();
-      }),
-      syncAll(user.uid),
-    ]).then((results) => {
-      if (results[0].status === 'rejected') {
-        console.warn('[notifications] Push registration failed:', results[0].reason);
-      }
-    });
-  }, [user?.uid, syncAll, cancelAll]);
+      }).catch((e: unknown) => {
+        console.warn('[notifications] Push registration failed:', e);
+      });
+    }
+
+    void syncAll(user.uid);
+  }, [user, syncAll, cancelAll]);
 
   // FCM rotates tokens; re-register so server pushes keep arriving.
   const signedIn = !!user;
   useEffect(() => {
     if (!signedIn) return;
     const sub = Notifications.addPushTokenListener((token) => {
+      // Avoid infinite loop: ignore token event fired by our own getDevicePushTokenAsync
+      if (isFetchingDevicePushToken()) return;
       void registerThisDevice(String(token.data)).catch((e: unknown) =>
         console.warn('[notifications] Push re-registration failed:', e),
       );
@@ -112,7 +119,7 @@ export function useScheduledNotifications() {
     const now = Date.now();
     if (now - lastSyncRef.current < 30_000) return;
     void syncAll(user.uid);
-  }, [slots, user?.uid, syncAll]);
+  }, [slots, user, syncAll]);
 
   useEffect(() => {
     const handleAppState = (nextState: AppStateStatus) => {
@@ -131,7 +138,7 @@ export function useScheduledNotifications() {
 
     const sub = AppState.addEventListener('change', handleAppState);
     return () => sub.remove();
-  }, [user?.uid, syncAll]);
+  }, [user, syncAll]);
 
   // Handle notification taps
   const openFromNotification = useCallback(

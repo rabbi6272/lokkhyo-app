@@ -2,7 +2,7 @@
   "expo": {
     "name": "Lokkhyo",
     "slug": "lokkhyo",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lokkhyo",
@@ -47,6 +47,16 @@
         {
           "photosPermission": "Allow Lokkhyo to access your photos so you can set a profile picture.",
           "cameraPermission": "Allow Lokkhyo to use your camera to take a profile picture."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": [
+              "arm64-v8a"
+            ]
+          }
         }
       ]
     ],

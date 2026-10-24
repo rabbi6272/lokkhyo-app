@@ -1,12 +1,15 @@
 import { onAuthStateChanged } from '@react-native-firebase/auth';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { auth } from '@/lib/firebase';
 import type { AuthContextValue, User } from '@/services/auth/auth.types';
 import { useProfileQuery } from '@/services/profile/profile.hooks';
 
 const AuthContext = createContext<AuthContextValue>({ user: null, initializing: true });
+
+const STORAGE_KEY = 'lokkhyo-query-cache';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -32,6 +35,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (previousUid.current && previousUid.current !== uid) {
       queryClient.clear();
+      // Also remove the persisted cache for the previous user
+      AsyncStorage.removeItem(STORAGE_KEY).catch(() => {});
+      if (previousUid.current) {
+        AsyncStorage.removeItem(`${STORAGE_KEY}-${previousUid.current}`).catch(() => {});
+      }
     }
     previousUid.current = uid;
   }, [uid, queryClient]);

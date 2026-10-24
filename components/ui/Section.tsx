@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-
-import { FontFamily, Palette, Radius, Space } from '@/constants/theme';
+import { StyleSheet, Text, View, type TextStyle, type ViewStyle } from 'react-native';
+import { useTheme } from '@/providers/theme-provider';
+import type { Palette, Theme } from '@/constants/theme';
 
 type SectionProps = {
   /** Eyebrow above the card, e.g. "Academic". Rendered in caps. */
@@ -20,42 +20,44 @@ type SectionProps = {
  * the title row rather than inside the card, which keeps row dividers clean.
  */
 export function Section({ title, action, children }: SectionProps) {
+  const { palette, space, radius, fontFamily } = useTheme();
+
   return (
-    <View style={styles.block}>
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+    <View style={styles.block(space)}>
+      <View style={styles.header(space)}>
+        <Text style={styles.title(palette, fontFamily)}>{title}</Text>
         {action}
       </View>
-      <View style={styles.card}>{children}</View>
+      <View style={styles.card(palette, radius, space)}>{children}</View>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  block: {
-    marginBottom: Space.xl,
-  },
-  header: {
+const styles = {
+  block: (space: Theme['space']): ViewStyle => ({
+    marginBottom: space.xl,
+  }),
+  header: (space: Theme['space']): ViewStyle => ({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: Space.xs,
-    marginBottom: Space.sm,
-  },
-  title: {
-    fontFamily: FontFamily.semibold,
+    paddingHorizontal: space.xs,
+    marginBottom: space.sm,
+  }),
+  title: (palette: Palette, fontFamily: Theme['fontFamily']): TextStyle => ({
+    fontFamily: fontFamily.semibold,
     fontSize: 11,
     letterSpacing: 1.2,
-    color: Palette.muted,
-  },
-  card: {
-    backgroundColor: Palette.surface,
-    borderRadius: Radius.lg,
+    color: palette.muted,
+  }),
+  card: (palette: Palette, radius: Theme['radius'], space: Theme['space']): ViewStyle => ({
+    backgroundColor: palette.surface,
+    borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Palette.line,
-    paddingHorizontal: Space.lg,
+    borderColor: palette.line,
+    paddingHorizontal: space.lg,
     /** Just enough to keep a card's first row off the edge; rows and fields
      *  supply the rest of the vertical rhythm themselves. */
     paddingVertical: 2,
-  },
-});
+  }),
+};

@@ -1,13 +1,14 @@
 import { StyleSheet, Text, View } from 'react-native';
-
-import { FontFamily, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 
 export function OrDivider() {
+  const { palette, fontFamily } = useTheme();
+
   return (
     <View style={styles.row}>
-      <View style={styles.line} />
-      <Text style={styles.text}>or</Text>
-      <View style={styles.line} />
+      <View style={[styles.line, { backgroundColor: palette.line }]} />
+      <Text style={[styles.text, { color: palette.faint, fontFamily: fontFamily.medium }]}>or</Text>
+      <View style={[styles.line, { backgroundColor: palette.line }]} />
     </View>
   );
 }
@@ -22,12 +23,9 @@ const styles = StyleSheet.create({
   line: {
     flex: 1,
     height: 1,
-    backgroundColor: Palette.line,
-    opacity: 0.4,
+    opacity: 0.6,
   },
   text: {
     fontSize: 13,
-    color: Palette.faint,
-    fontFamily: FontFamily.medium,
   },
 });

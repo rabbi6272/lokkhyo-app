@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, findNodeHandle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AttendanceMeter } from '@/components/AttendanceMeter';
@@ -12,7 +12,8 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { Palette, Radius, Space } from '@/constants/theme';
+import { Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
 import { useAssessments } from '@/hooks/useAssessments';
 import { useCourses } from '@/hooks/useCourses';
@@ -29,12 +30,14 @@ export default function CourseDetailScreen() {
     reminderId?: string;
   }>();
   const router = useRouter();
+  const { palette } = useTheme();
 
   const { courses, isLoading: isCoursesLoading } = useCourses();
   const course = courses.find((c) => c.id === id);
   const { assessments, isLoading: isAssessmentsLoading, deleteAssessment } = useAssessments(id ?? '');
   const { reminders, isLoading: isRemindersLoading, deleteReminder } = useUpcomingReminders(id ?? '');
-  const { courseAttendance } = useAllCoursesAttendance();
+  const targetCourses = useMemo(() => (course ? [course] : []), [course]);
+  const { courseAttendance } = useAllCoursesAttendance(targetCourses);
   const prefs = useNotificationPreferences();
 
   const sortedReminders = [...reminders].sort((a, b) => a.date.localeCompare(b.date));
@@ -92,17 +95,17 @@ export default function CourseDetailScreen() {
 
   if (isCoursesLoading || isAssessmentsLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Palette.teal} />
+      <View style={[styles.centered, { backgroundColor: palette.mist }]}>
+        <ActivityIndicator size="large" color={palette.teal} />
       </View>
     );
   }
 
   if (!course) {
     return (
-      <View style={styles.page}>
+      <View style={[styles.page, { backgroundColor: palette.mist }]}>
         <BackStep title="Course" onBack={() => router.back()} />
-        <View style={styles.centered}>
+        <View style={[styles.centered, { backgroundColor: palette.mist }]}>
           <ThemedText type="caption">This course no longer exists.</ThemedText>
         </View>
       </View>
@@ -114,7 +117,7 @@ export default function CourseDetailScreen() {
     .join(' · ');
 
   return (
-    <View style={styles.page}>
+    <View style={[styles.page, { backgroundColor: palette.mist }]}>
       <BackStep title={course.code} onBack={() => router.back()} />
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
@@ -132,7 +135,7 @@ export default function CourseDetailScreen() {
             percent={percent}
             target={passMarks}
             size={88}
-            color={belowPass ? Palette.warn : Palette.teal}
+            color={belowPass ? palette.warn : palette.teal}
             showValue={false}
           />
           <View style={styles.progressText}>
@@ -141,7 +144,7 @@ export default function CourseDetailScreen() {
               <ThemedText type="figure">{Math.round(obtained)}</ThemedText>
               <ThemedText type="caption">/ {max}</ThemedText>
             </View>
-            <ThemedText type="caption" color={belowPass ? Palette.warn : Palette.muted}>
+            <ThemedText type="caption" color={belowPass ? palette.warn : palette.muted}>
               {passMarks === undefined
                 ? 'CTs, assignments and attendance mark'
                 : belowPass
@@ -157,7 +160,7 @@ export default function CourseDetailScreen() {
           onAction={() => router.push({ pathname: '/reminder/new', params: { courseId: course.id } })}
         />
         {isRemindersLoading ? (
-          <ActivityIndicator color={Palette.teal} />
+          <ActivityIndicator color={palette.teal} />
         ) : sortedReminders.length === 0 ? (
           <EmptyState title="Nothing scheduled" body="Add an upcoming CT, quiz or assignment to get a reminder." />
         ) : (
@@ -214,7 +217,11 @@ export default function CourseDetailScreen() {
                     onPress={() =>
                       router.push({ pathname: '/assessment/new', params: { courseId: course.id, assessmentId: a.id } })
                     }
-                    style={({ pressed }) => [styles.mark, highlighted && styles.highlighted, pressed && { opacity: 0.7 }]}>
+                    style={({ pressed }) => [
+                      styles.mark,
+                      highlighted && [styles.highlighted, { backgroundColor: palette.tealSoft }],
+                      pressed && { opacity: 0.7 },
+                    ]}>
                     <View style={styles.markText}>
                       <ThemedText type="defaultSemiBold" numberOfLines={1}>
                         {a.name}
@@ -233,7 +240,7 @@ export default function CourseDetailScreen() {
                       accessibilityLabel={`Delete ${a.name}`}
                       onPress={() => handleDelete(a.id, a.name)}
                       hitSlop={10}>
-                      <SvgIcon size={18} name="trash" color={Palette.faint} />
+                      <SvgIcon size={18} name="trash" color={palette.faint} />
                     </Pressable>
                   </Pressable>
                 </View>
@@ -254,8 +261,8 @@ export default function CourseDetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1, backgroundColor: Palette.mist },
-  centered: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Palette.mist },
+  page: { flex: 1 },
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { paddingHorizontal: Space.lg, paddingBottom: Space.xxl },
   header: { gap: 2, marginTop: Space.xs, marginBottom: Space.lg },
   courseTitle: { fontSize: 22, lineHeight: 28 },
@@ -266,7 +273,6 @@ const styles = StyleSheet.create({
   mark: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
   markText: { flex: 1, gap: 1 },
   highlighted: {
-    backgroundColor: Palette.tealSoft,
     borderRadius: Radius.md,
     marginHorizontal: -Space.sm,
     paddingHorizontal: Space.sm,

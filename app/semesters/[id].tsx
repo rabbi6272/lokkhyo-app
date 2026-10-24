@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Section } from '@/components/ui/Section';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette, Space } from '@/constants/theme';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useSemesters } from '@/hooks/useSemesters';
@@ -26,6 +27,7 @@ import { formatGpa } from '@/services/grades/grades.services';
 export default function SemesterDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const { palette } = useTheme();
   const { user } = useAuth();
   const { semesters, isLoading, activateSemester, deleteSemester } = useSemesters();
   const { courses, isLoading: isCoursesLoading } = useCourses();
@@ -62,17 +64,17 @@ export default function SemesterDetailScreen() {
 
   if (isLoading || isCoursesLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Palette.teal} />
+      <View style={[styles.centered, { backgroundColor: palette.mist }]}>
+        <ActivityIndicator size="large" color={palette.teal} />
       </View>
     );
   }
 
   if (!semester) {
     return (
-      <View style={styles.page}>
+      <View style={[styles.page, { backgroundColor: palette.mist }]}>
         <BackStep title="Semester" onBack={() => router.back()} />
-        <View style={styles.centered}>
+        <View style={[styles.centered, { backgroundColor: palette.mist }]}>
           <ThemedText type="caption">This semester no longer exists.</ThemedText>
         </View>
       </View>
@@ -149,8 +151,9 @@ export default function SemesterDetailScreen() {
 }
 
 function Row({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.row, !last && styles.rowDivider]}>
+    <View style={[styles.row, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]}>
       <ThemedText style={styles.rowLabel}>{label}</ThemedText>
       <ThemedText type="defaultSemiBold" style={styles.rowValue} numberOfLines={1}>
         {value}
@@ -161,13 +164,12 @@ function Row({ label, value, last }: { label: string; value: string; last?: bool
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
-  page: { flex: 1, backgroundColor: Palette.mist },
+  page: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   content: { paddingTop: Space.md, paddingBottom: Space.xxl },
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 15 },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.line,
   },
   rowLabel: { fontSize: 15 },
   rowValue: { fontSize: 15, textAlign: 'right', flexShrink: 1, marginLeft: Space.lg },

@@ -10,7 +10,7 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { FontFamily, Palette, Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllUpcomingReminders } from '@/hooks/useAllUpcomingReminders';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useRoutines } from '@/hooks/useRoutines';
@@ -26,6 +26,7 @@ export default function RoutineScreen() {
   const { reminders: upcoming, isLoading: isUpcomingLoading } = useAllUpcomingReminders();
   const deleteUpcoming = useDeleteUpcomingReminder();
   const prefs = useNotificationPreferences();
+  const { palette, fontFamily } = useTheme();
 
   const today = getTodayOfWeek();
   const [selectedDay, setSelectedDay] = useState<number>(today);
@@ -56,6 +57,7 @@ export default function RoutineScreen() {
         {DAY_SHORT_NAMES.map((day, index) => {
           const selected = selectedDay === index;
           const count = slots.filter((s) => s.dayOfWeek === index).length;
+          const isToday = index === today;
           return (
             <Pressable
               key={day}
@@ -63,11 +65,37 @@ export default function RoutineScreen() {
               accessibilityState={{ selected }}
               accessibilityLabel={`${DAY_NAMES[index]}, ${count} ${count === 1 ? 'class' : 'classes'}`}
               onPress={() => setSelectedDay(index)}
-              style={[styles.day, selected && styles.daySelected]}>
-              <ThemedText style={[styles.dayLabel, selected && styles.onTeal, index === today && !selected && styles.today]}>
+              style={[
+                styles.day,
+                {
+                  backgroundColor: selected ? palette.teal : palette.surface,
+                  borderColor: selected ? palette.teal : palette.line,
+                },
+              ]}>
+              <ThemedText
+                style={[
+                  styles.dayLabel,
+                  {
+                    fontFamily: fontFamily.medium,
+                    color: selected ? palette.onTeal : isToday ? palette.teal : palette.muted,
+                  },
+                ]}>
                 {day}
               </ThemedText>
-              <ThemedText style={[styles.dayCount, selected && styles.onTeal, count === 0 && !selected && styles.dayEmpty]}>
+              <ThemedText
+                style={[
+                  styles.dayCount,
+                  {
+                    fontFamily: fontFamily.display,
+                    color: selected
+                      ? palette.onTeal
+                      : count === 0
+                        ? palette.faint
+                        : isToday
+                          ? palette.teal
+                          : palette.ink,
+                  },
+                ]}>
                 {count > 0 ? count : '–'}
               </ThemedText>
             </Pressable>
@@ -78,7 +106,7 @@ export default function RoutineScreen() {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <SectionHeader title={selectedDay === today ? `Today · ${DAY_NAMES[selectedDay]}` : DAY_NAMES[selectedDay]} first />
         {isLoading ? (
-          <ActivityIndicator color={Palette.teal} />
+          <ActivityIndicator color={palette.teal} />
         ) : daySlots.length === 0 ? (
           <EmptyState
             title={`No classes on ${DAY_NAMES[selectedDay]}`}
@@ -92,12 +120,12 @@ export default function RoutineScreen() {
                 {index > 0 && <Divider />}
                 <View style={styles.slot}>
                   <View style={styles.time}>
-                    <ThemedText type="number" color={Palette.teal}>
+                    <ThemedText type="number" color={palette.teal}>
                       {formatTime12h(slot.startTime)}
                     </ThemedText>
                     <ThemedText type="caption">{formatTime12h(slot.endTime)}</ThemedText>
                   </View>
-                  <View style={styles.rule} />
+                  <View style={[styles.rule, { backgroundColor: palette.tealSoft }]} />
                   <View style={styles.slotText}>
                     <ThemedText type="defaultSemiBold">{slot.courseLabel}</ThemedText>
                     <ThemedText type="caption">{slot.room ? `Room ${slot.room}` : 'No room set'}</ThemedText>
@@ -107,7 +135,7 @@ export default function RoutineScreen() {
                     accessibilityLabel={`Remove ${slot.courseLabel} at ${slot.startTime}`}
                     onPress={() => handleDelete(slot.id, slot.courseLabel)}
                     hitSlop={10}>
-                    <SvgIcon size={18} name="trash" color={Palette.faint} />
+                    <SvgIcon size={18} name="trash" color={palette.faint} />
                   </Pressable>
                 </View>
               </View>
@@ -117,7 +145,7 @@ export default function RoutineScreen() {
 
         <SectionHeader title="Upcoming" actionLabel="Add" onAction={() => router.push('/reminder/new')} />
         {isUpcomingLoading ? (
-          <ActivityIndicator color={Palette.teal} />
+          <ActivityIndicator color={palette.teal} />
         ) : upcoming.length === 0 ? (
           <EmptyState
             title="No upcoming tests"
@@ -149,31 +177,25 @@ export default function RoutineScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: Space.xxl },
+  content: { paddingBottom: 32 },
   week: {
     flexDirection: 'row',
     gap: 6,
-    marginBottom: Space.lg,
+    marginBottom: 16,
   },
   day: {
     flex: 1,
     alignItems: 'center',
-    paddingVertical: Space.sm,
-    borderRadius: Radius.md,
-    backgroundColor: Palette.surface,
+    paddingVertical: 8,
+    borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Palette.line,
     gap: 2,
   },
-  daySelected: { backgroundColor: Palette.teal, borderColor: Palette.teal },
-  dayLabel: { fontFamily: FontFamily.medium, fontSize: 12, color: Palette.muted },
-  dayCount: { fontFamily: FontFamily.display, fontSize: 16, lineHeight: 20, color: Palette.ink },
-  dayEmpty: { color: Palette.faint },
-  today: { color: Palette.teal, fontFamily: FontFamily.semibold },
-  onTeal: { color: '#FFFFFF' },
+  dayLabel: { fontSize: 12 },
+  dayCount: { fontSize: 16, lineHeight: 20 },
   list: { paddingVertical: 0 },
-  slot: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
+  slot: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
   time: { width: 70 },
-  rule: { width: 2, alignSelf: 'stretch', borderRadius: 1, backgroundColor: Palette.tealSoft },
+  rule: { width: 2, alignSelf: 'stretch', borderRadius: 1 },
   slotText: { flex: 1, gap: 1 },
 });

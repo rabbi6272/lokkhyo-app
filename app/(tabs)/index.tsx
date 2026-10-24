@@ -1,6 +1,7 @@
-import { useQueries } from '@tanstack/react-query';
+import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AttendanceMeter } from '@/components/AttendanceMeter';
 import { CourseCard } from '@/components/CourseCard';
@@ -10,7 +11,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette, Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
 import { useCourses } from '@/hooks/useCourses';
 import { useRoutines } from '@/hooks/useRoutines';
@@ -28,14 +29,28 @@ export default function HomeScreen() {
   const { profileData } = useProfile();
   const { courses } = useCourses();
   const { slots } = useRoutines();
-  const { courseAttendance } = useAllCoursesAttendance();
+  const { palette, radius, space, resolved } = useTheme();
+  const isDark = resolved === 'dark';
+  const queryClient = useQueryClient();
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Home screen presents at most 3 courses. Only query details for those 3 to
+  // avoid massive parallel network fan-out on cold start.
+  const homeCourses = useMemo(() => courses.slice(0, 3), [courses]);
+  const { courseAttendance } = useAllCoursesAttendance(homeCourses);
 
   const progressQueries = useQueries({
-    queries: courses.map((course) => courseAssessmentsQuery(user?.uid, course.id)),
+    queries: homeCourses.map((course) => courseAssessmentsQuery(user?.uid, course.id)),
   });
   const resultQueries = useQueries({
-    queries: courses.map((course) => courseResultsQuery(user?.uid, course.id)),
+    queries: homeCourses.map((course) => courseResultsQuery(user?.uid, course.id)),
   });
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await queryClient.invalidateQueries();
+    setRefreshing(false);
+  }, [queryClient]);
 
   const firstName = profileData?.fullName?.split(' ')[0] || 'there';
   const now = new Date();
@@ -47,25 +62,53 @@ export default function HomeScreen() {
   const nextClass = findNextClass(slots);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
+  const contentStyle = StyleSheet.create({ content: { paddingBottom: space.xxl } }).content;
+  const heroStyle = StyleSheet.create({
+    hero: {
+      backgroundColor: isDark ? palette.surface : palette.teal,
+      borderRadius: radius.lg,
+      borderWidth: isDark ? 1 : 0,
+      borderColor: isDark ? palette.line : undefined,
+      padding: space.lg + 4,
+      gap: space.xs,
+    },
+  }).hero;
+  const heroRowStyle = StyleSheet.create({ heroRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.md, marginTop: space.xs } }).heroRow;
+  const heroCourseStyle = StyleSheet.create({ heroCourse: { flexShrink: 1 } }).heroCourse;
+  const listCardStyle = StyleSheet.create({ listCard: { paddingVertical: 0 } }).listCard;
+  const slotRowStyle = StyleSheet.create({ slotRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md } }).slotRow;
+  const slotTimeStyle = StyleSheet.create({ slotTime: { width: 72, color: palette.teal } }).slotTime;
+  const doneStyle = StyleSheet.create({ done: { opacity: 0.45 } }).done;
+
   return (
     <Wrapper>
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={contentStyle}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            tintColor={palette.teal}
+            colors={[palette.teal]}
+          />
+        }>
         <PageHeader eyebrow={todayLabel} title={`Hello, ${firstName}`} />
 
         {nextClass ? (
-          <View style={styles.hero} accessible accessibilityLabel={`Next class ${nextClass.courseLabel} ${nextClass.when} at ${nextClass.startTime}`}>
-            <ThemedText type="eyebrow" color={Palette.tealOnDark}>
+          <View style={heroStyle} accessible accessibilityLabel={`Next class ${nextClass.courseLabel} ${nextClass.when} at ${nextClass.startTime}`}>
+            <ThemedText type="eyebrow" color={isDark ? palette.teal : palette.tealOnDark}>
               NEXT CLASS · {nextClass.when.toUpperCase()}
             </ThemedText>
-            <View style={styles.heroRow}>
-              <ThemedText type="figure" color="#FFFFFF">
+            <View style={heroRowStyle}>
+              <ThemedText type="figure" color={isDark ? palette.ink : '#FFFFFF'}>
                 {formatTime12h(nextClass.startTime)}
               </ThemedText>
-              <ThemedText type="heading" color="#FFFFFF" style={styles.heroCourse} numberOfLines={1}>
+              <ThemedText type="heading" color={isDark ? palette.ink : '#FFFFFF'} style={heroCourseStyle} numberOfLines={1}>
                 {nextClass.courseLabel}
               </ThemedText>
             </View>
-            <ThemedText type="caption" color={Palette.tealOnDark}>
+            <ThemedText type="caption" color={isDark ? palette.muted : palette.tealOnDark}>
               Until {formatTime12h(nextClass.endTime)}
               {nextClass.room ? ` · Room ${nextClass.room}` : ''}
             </ThemedText>
@@ -88,8 +131,8 @@ export default function HomeScreen() {
                 return (
                   <View key={slot.id}>
                     {index > 0 && <Divider />}
-                    <View style={[styles.slotRow, done && styles.done]}>
-                      <ThemedText type="number" style={styles.slotTime}>
+                    <View style={[slotRowStyle, done && doneStyle]}>
+                      <ThemedText type="number" style={slotTimeStyle}>
                         {formatTime12h(slot.startTime)}
                       </ThemedText>
                       <ThemedText type="defaultSemiBold" style={styles.flex} numberOfLines={1}>
@@ -113,8 +156,8 @@ export default function HomeScreen() {
             onAction={() => router.push('/course/new')}
           />
         ) : (
-          <Card dense style={styles.listCard}>
-            {courses.slice(0, 3).map((course, index) => (
+          <Card dense style={listCardStyle}>
+            {homeCourses.map((course, index) => (
               <View key={course.id}>
                 {index > 0 && <Divider />}
                 <CourseCard
@@ -131,8 +174,8 @@ export default function HomeScreen() {
         {courses.length > 0 && (
           <>
             <SectionHeader title="Attendance" actionLabel="See all" href="/attendance" />
-            <Card dense style={styles.listCard}>
-              {courses.slice(0, 3).map((course, index) => (
+            <Card dense style={listCardStyle}>
+              {homeCourses.map((course, index) => (
                 <View key={course.id}>
                   {index > 0 && <Divider />}
                   <AttendanceMeter
@@ -170,18 +213,5 @@ function findNextClass(slots: ReturnType<typeof useRoutines>['slots']) {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: Space.xxl },
   flex: { flex: 1 },
-  hero: {
-    backgroundColor: Palette.teal,
-    borderRadius: Radius.lg,
-    padding: Space.lg + 4,
-    gap: Space.xs,
-  },
-  heroRow: { flexDirection: 'row', alignItems: 'baseline', gap: Space.md, marginTop: Space.xs },
-  heroCourse: { flexShrink: 1 },
-  listCard: { paddingVertical: 0 },
-  slotRow: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
-  slotTime: { width: 72, color: Palette.teal },
-  done: { opacity: 0.45 },
 });

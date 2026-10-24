@@ -1,5 +1,5 @@
 /**
- * Wire types for the semesters resource — mirror `lokkhyo_server/schemas/semester.ts`.
+ * Wire types for the semesters resource — mirror `lokkhyo-server/schemas/semester.ts`.
  * Screens never see these; `semesters.services.ts` maps them to `Semester`.
  */
 

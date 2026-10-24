@@ -1,8 +1,8 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, View } from 'react-native';
+import { useTheme } from '@/providers/theme-provider';
 
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { FontFamily, Palette } from '@/constants/theme';
 
 const TABS = [
   { name: 'index', title: 'Home', icon: 'home' },
@@ -13,16 +13,30 @@ const TABS = [
 ] as const;
 
 export default function TabLayout() {
+  const { palette, fontFamily } = useTheme();
+
+  const barStyle = StyleSheet.create({
+    bar: {
+      height: 72,
+      paddingTop: 6,
+      backgroundColor: palette.surface,
+      borderTopWidth: StyleSheet.hairlineWidth,
+      borderTopColor: palette.line,
+      elevation: 0,
+    },
+  }).bar;
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         animation: 'shift',
-        tabBarActiveTintColor: Palette.teal,
-        tabBarInactiveTintColor: Palette.faint,
-        tabBarStyle: styles.bar,
+        lazy: true,
+        tabBarActiveTintColor: palette.teal,
+        tabBarInactiveTintColor: palette.faint,
+        tabBarStyle: barStyle,
         tabBarLabel: ({ focused, color, children }) => (
-          <Text style={[styles.label, { color, fontFamily: focused ? FontFamily.semibold : FontFamily.medium }]}>
+          <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>
             {children}
           </Text>
         ),
@@ -35,7 +49,7 @@ export default function TabLayout() {
             title: tab.title,
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconWrap}>
-                <View style={[styles.marker, focused && { backgroundColor: Palette.teal }]} />
+                <View style={[styles.marker, focused && { backgroundColor: palette.teal }]} />
                 <SvgIcon name={tab.icon} size={24} color={color} />
               </View>
             ),
@@ -47,14 +61,6 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  bar: {
-    height: 72,
-    paddingTop: 6,
-    backgroundColor: Palette.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: Palette.line,
-    elevation: 0,
-  },
   label: { fontSize: 11, paddingTop: 2 },
   iconWrap: { alignItems: 'center', gap: 4 },
   /** A short bar above the active tab's icon — the only active-state decoration. */

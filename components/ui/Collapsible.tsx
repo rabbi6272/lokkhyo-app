@@ -3,11 +3,12 @@ import { StyleSheet, TouchableOpacity } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { SvgIcon } from './SvgIcon';
 
 export function Collapsible({ children, title }: PropsWithChildren & { title: string }) {
   const [isOpen, setIsOpen] = useState(false);
+  const { palette } = useTheme();
 
   return (
     <ThemedView>
@@ -18,7 +19,7 @@ export function Collapsible({ children, title }: PropsWithChildren & { title: st
         <SvgIcon
           name="arrowLeft"
           size={18}
-          color={Colors.icon}
+          color={palette.muted}
         />
 
         <ThemedText type="defaultSemiBold">{title}</ThemedText>

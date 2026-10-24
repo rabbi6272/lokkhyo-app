@@ -17,7 +17,7 @@ const DEV_FALLBACK = Platform.select({
 
 export const API_BASE_URL = (process.env.EXPO_PUBLIC_API_URL ?? DEV_FALLBACK).replace(/\/+$/, '');
 
-/** Every route lives under this prefix (see `lokkhyo_server/app/api/v1`). */
+/** Every route lives under this prefix (see `lokkhyo-server/app/api/v1`). */
 export const API_PREFIX = '/api/v1';
 
 /** Abort a request that has not produced a response in this long. */

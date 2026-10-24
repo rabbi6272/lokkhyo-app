@@ -7,23 +7,16 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "android": {
-        "credentialsSource": "local"
-      }
+      "bun": "1.4.4"
     },
     "preview": {
-      "distribution": "internal",
-      "android": {
-        "credentialsSource": "local"
-      }
+      "distribution": "internal"
     },
     "production": {
       "distribution": "internal",
       "autoIncrement": true,
       "android": {
-        "credentialsSource": "local",
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease"
+        "buildType": "apk"
       }
     }
   },

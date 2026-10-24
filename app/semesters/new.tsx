@@ -8,7 +8,8 @@ import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/InputField';
 import { Section } from '@/components/ui/Section';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette, Space } from '@/constants/theme';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useSemesters } from '@/hooks/useSemesters';
 import { FirebaseError } from '@/services/FirebaseError';
 import { gpaRange, isDate, isNumeric, required } from '@/lib/validate';
@@ -27,6 +28,7 @@ function todayIso() {
 export default function NewSemesterScreen() {
   const router = useRouter();
   const { createSemester, activateSemester } = useSemesters();
+  const { palette } = useTheme();
 
   const [name, setName] = useState('');
   const [startDate, setStartDate] = useState(todayIso());
@@ -115,7 +117,7 @@ export default function NewSemesterScreen() {
           <ThemedText type="caption" style={styles.hint}>
             The new term becomes your current semester; the previous one is archived and keeps its courses and grades.
           </ThemedText>
-          {submitError ? <Text style={styles.error}>{submitError}</Text> : null}
+          {submitError ? <Text style={[styles.error, { color: palette.risk }]}>{submitError}</Text> : null}
 
           <Button
             title="Create semester"
@@ -132,5 +134,5 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingTop: Space.md, paddingBottom: Space.xxl, gap: Space.md },
   hint: { paddingHorizontal: Space.xs },
-  error: { color: Palette.risk, fontSize: 13, paddingHorizontal: Space.xs },
+  error: { fontSize: 13, paddingHorizontal: Space.xs },
 });

@@ -21,13 +21,14 @@ import { Field } from '@/components/ui/InputField';
 import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Brand, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useSemesters } from '@/hooks/useSemesters';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/providers/auth-provider';
 import { gpaRange, isNumeric, required } from '@/lib/validate';
 
 export default function EditProfileScreen() {
+  const { palette } = useTheme();
   const navigation = useNavigation();
   const { user } = useAuth();
   const { profileData, updateProfile, updatePhoto, removePhoto } = useProfile();
@@ -130,7 +131,7 @@ export default function EditProfileScreen() {
     setModalVisible(false);
   };
 
-  /** Server cap for an uploaded photo (mirrors `lokkhyo_server/lib/photo.ts`). */
+  /** Server cap for an uploaded photo (mirrors `lokkhyo-server/lib/photo.ts`). */
   const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 
   /** A square, compressed pick keeps uploads under the cap and avatars even. */
@@ -209,8 +210,8 @@ export default function EditProfileScreen() {
                   accessibilityLabel="Change profile photo"
                   hitSlop={6}
                   onPress={() => setPhotoModalVisible(true)}
-                  style={styles.cameraBadge}>
-                  <SvgIcon name="camera" size={12} color="#FFFFFF" />
+                  style={[styles.cameraBadge, { backgroundColor: palette.teal, borderColor: palette.surface }]}>
+                  <SvgIcon name="camera" size={12} color={palette.onTeal} />
                 </Pressable>
               </View>
               <View style={styles.identityText}>
@@ -258,7 +259,7 @@ export default function EditProfileScreen() {
             title="CURRENT SEMESTER"
             action={
               <Pressable accessibilityRole="button" onPress={() => setModalVisible(true)}>
-                <Text style={styles.addText}>+ Add</Text>
+                <Text style={[styles.addText, { backgroundColor: palette.tealSoft, color: palette.teal }]}>+ Add</Text>
               </Pressable>
             }>
             {semesters.length === 0 ? (
@@ -296,7 +297,7 @@ export default function EditProfileScreen() {
             animationType="fade"
             onRequestClose={() => setModalVisible(false)}>
             <Pressable style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
-              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <Pressable style={[styles.modalContent, { backgroundColor: palette.surface }]} onPress={(e) => e.stopPropagation()}>
                 <ThemedText type="subtitle" style={styles.modalTitle}>
                   New Semester
                 </ThemedText>
@@ -361,7 +362,7 @@ export default function EditProfileScreen() {
             animationType="fade"
             onRequestClose={() => setPhotoModalVisible(false)}>
             <Pressable style={styles.modalOverlay} onPress={() => setPhotoModalVisible(false)}>
-              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <Pressable style={[styles.modalContent, { backgroundColor: palette.surface }]} onPress={(e) => e.stopPropagation()}>
                 <ThemedText type="subtitle" style={styles.modalTitle}>
                   Profile photo
                 </ThemedText>
@@ -397,7 +398,6 @@ export default function EditProfileScreen() {
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: Brand.page,
   },
   scroll: {
     flex: 1,
@@ -422,11 +422,9 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: Palette.teal,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
-    borderColor: Palette.surface,
   },
   modalHint: {
     opacity: 0.6,
@@ -448,8 +446,6 @@ const styles = StyleSheet.create({
   addText: {
     fontFamily: 'InterSemiBold',
     fontSize: 13,
-    color: Brand.accent,
-    backgroundColor: Brand.teal,
     overflow: 'hidden',
     borderRadius: 50,
     paddingHorizontal: 12,
@@ -482,7 +478,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   modalContent: {
-    backgroundColor: Palette.surface,
     borderRadius: 16,
     padding: 24,
     width: '100%',

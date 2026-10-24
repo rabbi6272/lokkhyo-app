@@ -1,4 +1,4 @@
-/** Wire types for assessments — mirror `lokkhyo_server/schemas/assessment.ts`. */
+/** Wire types for assessments — mirror `lokkhyo-server/schemas/assessment.ts`. */
 
 export type AssessmentTypeDto =
   | 'CT'

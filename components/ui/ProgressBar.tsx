@@ -1,8 +1,8 @@
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { View, type ViewStyle } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-
-import { Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
+import type { Palette } from '@/constants/theme';
 
 type ProgressBarProps = {
   percent: number;
@@ -16,7 +16,8 @@ type ProgressBarProps = {
  * line the student is aiming for, so the bar reads as "how far from the
  * target", not just "how full".
  */
-export function ProgressBar({ percent, color = Palette.teal, target }: ProgressBarProps) {
+export function ProgressBar({ percent, color, target }: ProgressBarProps) {
+  const { palette } = useTheme();
   const clamped = Math.min(100, Math.max(0, percent));
   const progress = useSharedValue(0);
 
@@ -31,29 +32,29 @@ export function ProgressBar({ percent, color = Palette.teal, target }: ProgressB
       accessibilityRole="progressbar"
       accessibilityValue={{ min: 0, max: 100, now: Math.round(clamped) }}
       style={styles.wrap}>
-      <View style={styles.track}>
-        <Animated.View style={[styles.fill, fillStyle, { backgroundColor: color }]} />
+      <View style={styles.track(palette)}>
+        <Animated.View style={[styles.fill, fillStyle, { backgroundColor: color ?? palette.teal }]} />
       </View>
-      {target !== undefined && <View style={[styles.tick, { left: `${Math.min(100, Math.max(0, target))}%` }]} />}
+      {target !== undefined && <View style={[styles.tick(palette), { left: `${Math.min(100, Math.max(0, target))}%` }]} />}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  wrap: { height: 12, justifyContent: 'center' },
-  track: {
+const styles = {
+  wrap: { height: 12, justifyContent: 'center' } as ViewStyle,
+  track: (palette: Palette): ViewStyle => ({
     height: 6,
     borderRadius: 3,
     overflow: 'hidden',
-    backgroundColor: Palette.line,
-  },
-  fill: { height: '100%', borderRadius: 3 },
-  tick: {
+    backgroundColor: palette.line,
+  }),
+  fill: { height: '100%', borderRadius: 3 } as ViewStyle,
+  tick: (palette: Palette): ViewStyle => ({
     position: 'absolute',
     width: 2,
     height: 12,
     marginLeft: -1,
     borderRadius: 1,
-    backgroundColor: Palette.ink,
-  },
-});
+    backgroundColor: palette.ink,
+  }),
+};

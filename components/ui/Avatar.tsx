@@ -1,7 +1,7 @@
 import { Image, StyleSheet, Text, View } from 'react-native';
 
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { Brand, Colors } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 
 type AvatarProps = {
   /** Used for the initials fallback and the accessibility label. */
@@ -32,13 +32,22 @@ function getInitials(name?: string) {
  * same everywhere.
  */
 export function Avatar({ name, photoUrl, size = 60, tone = 'onPage' }: AvatarProps) {
+  const { palette, resolved } = useTheme();
+
   if (photoUrl) {
     return (
       <Image
         source={{ uri: photoUrl }}
         resizeMode="cover"
         accessibilityLabel={`${name}'s photo`}
-        style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: Colors.card }}
+        style={{
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: palette.surface,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: palette.line,
+        }}
       />
     );
   }
@@ -54,7 +63,11 @@ export function Avatar({ name, photoUrl, size = 60, tone = 'onPage' }: AvatarPro
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: tone === 'onTeal' ? 'rgba(255,255,255,0.16)' : Colors.card,
+          backgroundColor: tone === 'onTeal'
+            ? 'rgba(255,255,255,0.16)'
+            : palette.surface,
+          borderWidth: StyleSheet.hairlineWidth,
+          borderColor: tone === 'onTeal' ? 'rgba(255,255,255,0.25)' : palette.line,
         },
       ]}>
       {initials ? (
@@ -62,7 +75,7 @@ export function Avatar({ name, photoUrl, size = 60, tone = 'onPage' }: AvatarPro
           style={{
             fontFamily: 'InterSemiBold',
             fontSize: size * 0.34,
-            color: tone === 'onTeal' ? '#fff' : Colors.text,
+            color: tone === 'onTeal' ? '#FFFFFF' : palette.ink,
           }}>
           {initials}
         </Text>
@@ -70,7 +83,7 @@ export function Avatar({ name, photoUrl, size = 60, tone = 'onPage' }: AvatarPro
         <SvgIcon
           name="user"
           size={size * 0.46}
-          color={tone === 'onTeal' ? Brand.accent : Colors.icon}
+          color={tone === 'onTeal' ? (resolved === 'dark' ? '#073F4C' : palette.tealOnDark) : palette.muted}
         />
       )}
     </View>

@@ -32,15 +32,21 @@ export interface DaySession {
 }
 
 /**
- * Loads and computes attendance across every course at once: per-course
- * stats, a date-indexed map of every course's sessions (for a unified
- * calendar), and an aggregate percent/at-risk count across all of them.
+ * Loads and computes attendance across courses: per-course
+ * stats, a date-indexed map of sessions (for a unified
+ * calendar), and an aggregate percent/at-risk count.
+ *
+ * Pass `targetCourses` to limit attendance queries to only the displayed
+ * courses (e.g. on Dashboard or a single Course screen), preventing massive
+ * parallel network fan-out on cold start.
  */
-export function useAllCoursesAttendance() {
+export function useAllCoursesAttendance(targetCourses?: Course[]) {
   const { user } = useAuth();
-  const { courses } = useCourses();
+  const { courses: allCourses } = useCourses();
   const { slots } = useRoutines();
   const { semesters } = useSemesters();
+
+  const courses = targetCourses ?? allCourses;
 
   const attendanceQueries = useQueries({
     queries: courses.map((course) => courseAttendanceQuery(user?.uid, course.id)),

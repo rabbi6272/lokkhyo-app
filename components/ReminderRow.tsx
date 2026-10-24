@@ -2,7 +2,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { FontFamily, Palette, Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { ASSESSMENT_TYPE_LABELS, MONTH_NAMES } from '@/lib/constants';
 import type { AssessmentType } from '@/lib/types';
 
@@ -22,20 +22,45 @@ type ReminderRowProps = {
 
 /** An upcoming CT/quiz/assignment: a date tile, what it is, when you'll be reminded. */
 export function ReminderRow({ name, type, date, courseCode, reminderLine, highlighted, onPress, onDelete }: ReminderRowProps) {
+  const { palette, radius, space, fontFamily } = useTheme();
   const [, month, day] = date.split('-').map(Number);
   const daysLeft = daysUntil(date);
+
+  const rowStyle = StyleSheet.create({ row: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md } }).row;
+  const highlightedStyle = StyleSheet.create({
+    highlighted: {
+      backgroundColor: palette.tealSoft,
+      borderRadius: radius.md,
+      marginHorizontal: -space.sm,
+      paddingHorizontal: space.sm,
+    },
+  }).highlighted;
+  const tileStyle = StyleSheet.create({
+    tile: {
+      width: 46,
+      height: 50,
+      borderRadius: radius.sm,
+      backgroundColor: palette.mist,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+  }).tile;
+  const tileSoonStyle = StyleSheet.create({ tileSoon: { backgroundColor: palette.warnSoft } }).tileSoon;
+  const tileDayStyle = StyleSheet.create({ tileDay: { fontFamily: fontFamily.display, fontSize: 18, lineHeight: 22, color: palette.ink } }).tileDay;
+  const tileMonthStyle = StyleSheet.create({ tileMonth: { fontFamily: fontFamily.semibold, fontSize: 10, letterSpacing: 0.8, color: palette.muted } }).tileMonth;
+  const textStyle = StyleSheet.create({ text: { flex: 1, gap: 1 } }).text;
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={`${name}, ${ASSESSMENT_TYPE_LABELS[type]}, ${date}`}
       onPress={onPress}
-      style={({ pressed }) => [styles.row, highlighted && styles.highlighted, pressed && { opacity: 0.7 }]}>
-      <View style={[styles.tile, daysLeft <= 2 && daysLeft >= 0 && styles.tileSoon]}>
-        <ThemedText style={[styles.tileDay, daysLeft <= 2 && daysLeft >= 0 && { color: Palette.warn }]}>{day}</ThemedText>
-        <ThemedText style={styles.tileMonth}>{MONTH_NAMES[month - 1]?.slice(0, 3).toUpperCase()}</ThemedText>
+      style={({ pressed }) => [rowStyle, highlighted && highlightedStyle, pressed && { opacity: 0.7 }]}>
+      <View style={[tileStyle, daysLeft <= 2 && daysLeft >= 0 && tileSoonStyle]}>
+        <ThemedText style={[tileDayStyle, daysLeft <= 2 && daysLeft >= 0 && { color: palette.warn }]}>{day}</ThemedText>
+        <ThemedText style={tileMonthStyle}>{MONTH_NAMES[month - 1]?.slice(0, 3).toUpperCase()}</ThemedText>
       </View>
-      <View style={styles.text}>
+      <View style={textStyle}>
         <ThemedText type="defaultSemiBold" numberOfLines={1}>
           {name}
         </ThemedText>
@@ -44,7 +69,7 @@ export function ReminderRow({ name, type, date, courseCode, reminderLine, highli
           {courseCode ? ` · ${courseCode}` : ''} · {relativeDay(daysLeft)}
         </ThemedText>
         {reminderLine ? (
-          <ThemedText type="caption" color={Palette.teal} numberOfLines={1}>
+          <ThemedText type="caption" color={palette.teal} numberOfLines={1}>
             {reminderLine}
           </ThemedText>
         ) : null}
@@ -54,7 +79,7 @@ export function ReminderRow({ name, type, date, courseCode, reminderLine, highli
         accessibilityLabel={`Delete ${name}`}
         onPress={onDelete}
         hitSlop={10}>
-        <SvgIcon size={18} name="trash" color={Palette.faint} />
+        <SvgIcon size={18} name="trash" color={palette.faint} />
       </Pressable>
     </Pressable>
   );
@@ -74,20 +99,3 @@ function relativeDay(days: number): string {
   if (days < 0) return `${-days} ${days === -1 ? 'day' : 'days'} ago`;
   return `in ${days} days`;
 }
-
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
-  highlighted: { backgroundColor: Palette.tealSoft, borderRadius: Radius.md, marginHorizontal: -Space.sm, paddingHorizontal: Space.sm },
-  tile: {
-    width: 46,
-    height: 50,
-    borderRadius: Radius.sm,
-    backgroundColor: Palette.mist,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  tileSoon: { backgroundColor: Palette.warnSoft },
-  tileDay: { fontFamily: FontFamily.display, fontSize: 18, lineHeight: 22, color: Palette.ink },
-  tileMonth: { fontFamily: FontFamily.semibold, fontSize: 10, letterSpacing: 0.8, color: Palette.muted },
-  text: { flex: 1, gap: 1 },
-});

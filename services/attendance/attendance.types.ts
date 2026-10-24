@@ -1,4 +1,4 @@
-/** Wire types for attendance — mirror `lokkhyo_server/schemas/attendance.ts`. */
+/** Wire types for attendance — mirror `lokkhyo-server/schemas/attendance.ts`. */
 
 export type AttendanceStatusDto = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'CANCELLED';
 

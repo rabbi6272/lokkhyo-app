@@ -8,7 +8,8 @@ import { Card } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/Button';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette, Space } from '@/constants/theme';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useSemesters } from '@/hooks/useSemesters';
@@ -29,6 +30,7 @@ export default function SemestersScreen() {
   const { semesters, isLoading } = useSemesters();
   const { courses } = useCourses();
   const { profileData } = useProfile();
+  const { palette } = useTheme();
 
   // One GPA request per term, fanned out rather than a hook per row. Keyed by
   // id: the list below is reordered for display, so indices would not line up.
@@ -48,7 +50,7 @@ export default function SemestersScreen() {
       <Wrapper noTopMargin style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {isLoading ? (
-            <ActivityIndicator color={Palette.teal} style={styles.loading} />
+            <ActivityIndicator color={palette.teal} style={styles.loading} />
           ) : ordered.length === 0 ? (
             <EmptyState
               title="No semesters yet"
@@ -82,11 +84,11 @@ export default function SemestersScreen() {
                             {semester.name}
                           </ThemedText>
                           {isCurrent(semester) ? (
-                            <ThemedText type="eyebrow" color={Palette.teal}>
+                            <ThemedText type="eyebrow" color={palette.teal}>
                               CURRENT
                             </ThemedText>
                           ) : semester.status === 'active' ? (
-                            <ThemedText type="eyebrow" color={Palette.good}>
+                            <ThemedText type="eyebrow" color={palette.good}>
                               ACTIVE
                             </ThemedText>
                           ) : null}

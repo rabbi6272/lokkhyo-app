@@ -4,6 +4,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  StatusBar,
   StyleSheet,
   Text,
   View,
@@ -14,7 +15,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/Button';
 import { GoogleButton } from '@/components/ui/GoogleButton';
 import { OrDivider } from '@/components/ui/OrDivider';
-import { Brand, FontFamily, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 
 interface AuthScreenLayoutProps {
   title: string;
@@ -55,25 +56,56 @@ export function AuthScreenLayout({
   footerLinkLabel,
   footerLinkHref,
 }: AuthScreenLayoutProps) {
+  const { palette, resolved, fontFamily } = useTheme();
+  const isDark = resolved === 'dark';
+
   return (
     <KeyboardAvoidingView
-      style={styles.flex}
+      style={[styles.flex, { backgroundColor: palette.mist }]}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <SafeAreaView edges={['top']} style={styles.masthead}>
+      <StatusBar
+        barStyle={isDark ? 'light-content' : 'light-content'}
+        backgroundColor="transparent"
+        translucent
+      />
+      <SafeAreaView
+        edges={['top']}
+        style={[
+          styles.masthead,
+          {
+            backgroundColor: isDark ? palette.surface : palette.teal,
+            borderColor: palette.line,
+            borderBottomWidth: isDark ? StyleSheet.hairlineWidth : 0,
+          },
+        ]}>
         <View style={styles.mastheadInner}>
-          <Text style={styles.eyebrow}>LOKKHYO</Text>
-          <Text style={styles.headline}>{title}</Text>
-          <Text style={styles.lede}>{subtitle}</Text>
+          <Text style={[styles.eyebrow, { color: isDark ? palette.teal : palette.tealOnDark }]}>
+            LOKKHYO
+          </Text>
+          <Text
+            style={[
+              styles.headline,
+              { color: isDark ? palette.ink : '#FFFFFF', fontFamily: fontFamily.displayBold },
+            ]}>
+            {title}
+          </Text>
+          <Text
+            style={[
+              styles.lede,
+              { color: isDark ? palette.muted : 'rgba(255,255,255,0.88)', fontFamily: fontFamily.regular },
+            ]}>
+            {subtitle}
+          </Text>
         </View>
       </SafeAreaView>
 
       <ScrollView
-        style={styles.form}
+        style={[styles.form, { backgroundColor: palette.mist }]}
         contentContainerStyle={styles.formContent}
         keyboardShouldPersistTaps="handled">
         {children}
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        {error ? <Text style={[styles.error, { color: palette.risk }]}>{error}</Text> : null}
 
         <Button title={submitLabel} onPress={onSubmit} loading={submitLoading} />
 
@@ -81,9 +113,9 @@ export function AuthScreenLayout({
 
         <GoogleButton onPress={onGoogle} loading={googleLoading} />
 
-        <ThemedText style={styles.footer}>
+        <ThemedText style={[styles.footer, { color: palette.muted }]}>
           {footerPrompt}{' '}
-          <Link href={footerLinkHref} style={styles.link}>
+          <Link href={footerLinkHref} style={[styles.link, { color: palette.teal, fontFamily: fontFamily.semibold }]}>
             {footerLinkLabel}
           </Link>
         </ThemedText>
@@ -95,10 +127,8 @@ export function AuthScreenLayout({
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
-    backgroundColor: Palette.surface,
   },
   masthead: {
-    backgroundColor: Brand.teal,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -111,26 +141,20 @@ const styles = StyleSheet.create({
     fontFamily: 'InterSemiBold',
     fontSize: 12,
     letterSpacing: 3,
-    color: Brand.accent,
   },
   headline: {
-    fontFamily: FontFamily.display,
     fontSize: 28,
     lineHeight: 34,
     letterSpacing: -0.4,
-    color: '#FFFFFF',
     marginTop: 14,
   },
   lede: {
-    fontFamily: 'InterRegular',
     fontSize: 15,
     lineHeight: 21,
-    color: 'rgba(255,255,255,0.88)',
     marginTop: 6,
   },
   form: {
     flex: 1,
-    backgroundColor: Palette.surface,
   },
   formContent: {
     paddingHorizontal: 24,
@@ -138,18 +162,15 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   error: {
-    color: Palette.risk,
     fontSize: 13,
     marginBottom: 14,
     paddingLeft: 4,
   },
   footer: {
     marginTop: 24,
-    color: Palette.muted,
     fontSize: 14,
   },
   link: {
-    color: Palette.teal,
-    fontFamily: FontFamily.semibold,
+    fontSize: 14,
   },
 });

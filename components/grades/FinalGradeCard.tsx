@@ -4,10 +4,11 @@ import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/InputField';
-import { Palette, Radius, Space } from '@/constants/theme';
+import { Radius, Space } from '@/constants/theme';
 import { newIdempotencyKey } from '@/lib/api';
 import { isNumeric } from '@/lib/validate';
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme } from '@/providers/theme-provider';
 import { useCourseResults, useRecordFinalGrade } from '@/services/grades/grades.hooks';
 import { formatGpa } from '@/services/grades/grades.services';
 import { FirebaseError } from '@/services/FirebaseError';
@@ -24,6 +25,7 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
   const { user } = useAuth();
   const { data: results } = useCourseResults(user?.uid, courseId);
   const record = useRecordFinalGrade();
+  const { palette } = useTheme();
 
   const counted = results?.find((r) => r.isLatestAttempt);
 
@@ -62,13 +64,13 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
   };
 
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: palette.surface, borderColor: palette.line }]}>
       <View style={styles.header}>
         <View style={styles.text}>
           <ThemedText type="eyebrow">FINAL GRADE · OFFICIAL</ThemedText>
           {counted ? (
             <View style={styles.gradeRow}>
-              <ThemedText type="figure" color={counted.status === 'BACKLOG' ? Palette.risk : Palette.ink}>
+              <ThemedText type="figure" color={counted.status === 'BACKLOG' ? palette.risk : palette.ink}>
                 {counted.letterGrade}
               </ThemedText>
               <ThemedText type="caption">
@@ -80,12 +82,12 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
             <ThemedText type="caption">Not graded yet. Record it once results are out.</ThemedText>
           )}
           {counted?.status === 'BACKLOG' && (
-            <ThemedText type="caption" color={Palette.risk}>
+            <ThemedText type="caption" color={palette.risk}>
               Backlog — this course must be repeated
             </ThemedText>
           )}
           {counted?.isGradeImprovementEligible && (
-            <ThemedText type="caption" color={Palette.teal}>
+            <ThemedText type="caption" color={palette.teal}>
               Eligible for grade improvement
             </ThemedText>
           )}
@@ -95,7 +97,7 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
 
       <Modal visible={visible} transparent animationType="slide" onRequestClose={() => setVisible(false)}>
         <Pressable style={styles.overlay} onPress={() => setVisible(false)}>
-          <Pressable style={styles.sheet} onPress={(e) => e.stopPropagation()}>
+          <Pressable style={[styles.sheet, { backgroundColor: palette.surface }]} onPress={(e) => e.stopPropagation()}>
             <ThemedText type="eyebrow">{counted ? 'NEW ATTEMPT' : 'FINAL GRADE'}</ThemedText>
             <ThemedText type="heading" style={styles.sheetTitle}>
               {counted ? 'Record a new attempt' : 'Record your final grade'}
@@ -138,10 +140,8 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: Palette.surface,
     borderRadius: Radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: Palette.line,
     padding: Space.lg,
     marginTop: Space.xl,
   },
@@ -151,7 +151,6 @@ const styles = StyleSheet.create({
   action: { minHeight: 40, paddingHorizontal: 16 },
   overlay: { flex: 1, backgroundColor: 'rgba(15,30,36,0.45)', justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: Palette.surface,
     borderTopLeftRadius: Radius.lg + 4,
     borderTopRightRadius: Radius.lg + 4,
     padding: Space.xl,

@@ -2,7 +2,7 @@ import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Space, statusColor } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { EXAM_ELIGIBILITY_THRESHOLD, type AttendanceStats } from '@/lib/attendance';
 
 /** Below this, the attendance mark is 0 — the line drawn on the bar. */
@@ -13,14 +13,19 @@ export const ATTENDANCE_MARK_LINE = 60;
  * by how close it is to losing exam eligibility.
  */
 export function AttendanceMeter({ code, title, stats }: { code: string; title?: string; stats?: AttendanceStats }) {
+  const { space, statusColor } = useTheme();
   const held = stats?.held ?? 0;
   const percent = stats?.percent ?? 0;
   const tone = statusColor(percent, EXAM_ELIGIBILITY_THRESHOLD, ATTENDANCE_MARK_LINE - EXAM_ELIGIBILITY_THRESHOLD);
 
+  const wrapStyle = StyleSheet.create({ wrap: { gap: 6, paddingVertical: space.md } }).wrap;
+  const rowStyle = StyleSheet.create({ row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: space.md } }).row;
+  const namesStyle = StyleSheet.create({ names: { flex: 1 } }).names;
+
   return (
-    <View style={styles.wrap}>
-      <View style={styles.row}>
-        <View style={styles.names}>
+    <View style={wrapStyle}>
+      <View style={rowStyle}>
+        <View style={namesStyle}>
           <ThemedText type="defaultSemiBold">{code}</ThemedText>
           {title ? (
             <ThemedText type="caption" numberOfLines={1}>
@@ -49,9 +54,3 @@ export function AttendanceMeter({ code, title, stats }: { code: string; title?: 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: { gap: 6, paddingVertical: Space.md },
-  row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: Space.md },
-  names: { flex: 1 },
-});

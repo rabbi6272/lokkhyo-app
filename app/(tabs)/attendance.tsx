@@ -11,7 +11,8 @@ import { ProgressBar } from '@/components/ui/ProgressBar';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { UnifiedAttendanceCalendar } from '@/components/UnifiedAttendanceCalendar';
-import { Palette, Space, statusColor } from '@/constants/theme';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance, useMarkAttendance, type DaySession } from '@/hooks/useAllCoursesAttendance';
 import { EXAM_ELIGIBILITY_THRESHOLD, todayStr } from '@/lib/attendance';
 import { formatTime12h } from '@/lib/routine';
@@ -20,6 +21,7 @@ import { parseTime } from '@/lib/validate';
 export default function AttendanceScreen() {
   const { courseAttendance, sessionsByDate, overall, isLoading } = useAllCoursesAttendance();
   const markAttendance = useMarkAttendance();
+  const { palette, statusColor } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   const today = todayStr();
@@ -65,7 +67,7 @@ export default function AttendanceScreen() {
     <Wrapper>
       <PageHeader title="Attendance" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {isLoading && <ActivityIndicator color={Palette.teal} style={styles.loading} />}
+        {isLoading && <ActivityIndicator color={palette.teal} style={styles.loading} />}
 
         {courseAttendance.length === 0 && !isLoading ? (
           <EmptyState
@@ -77,7 +79,7 @@ export default function AttendanceScreen() {
             <Card style={styles.overview}>
               <ThemedText type="eyebrow">OVERALL</ThemedText>
               <View style={styles.overviewRow}>
-                <ThemedText type="figure" color={overall.held > 0 ? overallTone.fg : Palette.faint}>
+                <ThemedText type="figure" color={overall.held > 0 ? overallTone.fg : palette.faint}>
                   {overall.held > 0 ? `${overall.percent}%` : '—'}
                 </ThemedText>
                 <ThemedText type="caption" style={styles.overviewNote}>
@@ -88,15 +90,15 @@ export default function AttendanceScreen() {
                 <ProgressBar percent={overall.percent} color={overallTone.fg} target={ATTENDANCE_MARK_LINE} />
               )}
               {overall.atRiskCount > 0 && (
-                <ThemedText type="caption" color={Palette.risk}>
+                <ThemedText type="caption" color={palette.risk}>
                   {overall.atRiskCount} {overall.atRiskCount > 1 ? 'courses are' : 'course is'} below exam eligibility.
                 </ThemedText>
               )}
             </Card>
 
             {pendingToday.length > 0 && (
-              <Card style={styles.pending}>
-                <ThemedText type="eyebrow" color={Palette.warn}>
+              <Card style={[styles.pending, { borderColor: palette.warnSoft }]}>
+                <ThemedText type="eyebrow" color={palette.warn}>
                   MARK TODAY · {pendingToday.length} {pendingToday.length === 1 ? 'CLASS' : 'CLASSES'}
                 </ThemedText>
                 {pendingToday.map((d, index) => (
@@ -170,7 +172,7 @@ const styles = StyleSheet.create({
   overview: { gap: Space.sm, marginBottom: Space.md },
   overviewRow: { flexDirection: 'row', alignItems: 'baseline', gap: Space.sm },
   overviewNote: { flexShrink: 1 },
-  pending: { gap: Space.sm, marginBottom: Space.md, borderColor: Palette.warnSoft, borderWidth: 1 },
+  pending: { gap: Space.sm, marginBottom: Space.md, borderWidth: 1 },
   pendingRow: { gap: Space.sm },
   pendingHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: Space.xs },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },

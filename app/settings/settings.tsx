@@ -9,8 +9,8 @@ import { Chip } from '@/components/ui/Chip';
 import { ThemedText } from '@/components/ThemedText';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette } from '@/constants/theme';
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme, useThemeMode } from '@/providers/theme-provider';
 import { useProfile } from '@/hooks/useUserProfile';
 import { deleteAccount, signOut } from '@/services/auth/auth.services';
 import {
@@ -121,6 +121,18 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { deleteProfile } = useProfile();
+  const { mode, setMode } = useThemeMode();
+  const { palette } = useTheme();
+
+  const cardStyle = [
+    styles.listCard,
+    {
+      backgroundColor: palette.surface,
+      borderColor: palette.line,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+  ];
+  const modalContentStyle = [styles.modalContent, { backgroundColor: palette.surface }];
 
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const prefsLoaded = prefs !== null;
@@ -255,11 +267,27 @@ export default function SettingsScreen() {
       <BackStep title="Settings" onBack={() => navigation.goBack()} />
       <Wrapper noTopMargin>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
             <MenuRow label="Edit Profile" onPress={() => router.push('/profile/edit')} last />
           </View>
 
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
+            <View style={styles.themeSection}>
+              <ThemedText style={styles.menuLabel}>Appearance</ThemedText>
+              <View style={styles.themeChips}>
+                {(['system', 'light', 'dark'] as const).map((m) => (
+                  <Chip
+                    key={m}
+                    label={m === 'system' ? 'System' : m === 'light' ? 'Light' : 'Dark'}
+                    selected={mode === m}
+                    onPress={() => setMode(m)}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <View style={cardStyle}>
             <ToggleRow
               label="Daily routine reminder"
               description="Get a morning summary of today's classes"
@@ -313,9 +341,9 @@ export default function SettingsScreen() {
             />
           </View>
 
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
             <Pressable style={styles.menuRow} onPress={() => setDeleteModalVisible(true)}>
-              <ThemedText type='defaultSemiBold' style={styles.dangerLabel}>Delete Account</ThemedText>
+              <ThemedText type='defaultSemiBold' style={[styles.dangerLabel, { color: palette.risk }]}>Delete Account</ThemedText>
             </Pressable>
           </View>
 
@@ -323,7 +351,7 @@ export default function SettingsScreen() {
 
           <Modal visible={signoutModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
             <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
+              <View style={modalContentStyle}>
                 <ThemedText type="title" style={styles.modalTitle}>
                   Sign out?
                 </ThemedText>
@@ -338,7 +366,7 @@ export default function SettingsScreen() {
                     onPress={async () => {
                       try {
                         await signOut();
-                      } catch (error) {
+                      } catch {
                         Alert.alert('Error', 'Failed to sign out. Please try again.');
                       }
                     }}
@@ -355,7 +383,7 @@ export default function SettingsScreen() {
             onRequestClose={() => setEditingTime(null)}
           >
             <Pressable style={styles.modalOverlay} onPress={() => setEditingTime(null)}>
-              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
+              <Pressable style={modalContentStyle} onPress={(e) => e.stopPropagation()}>
                 <ThemedText type="title" style={styles.modalTitle}>
                   {editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
                 </ThemedText>
@@ -378,7 +406,7 @@ export default function SettingsScreen() {
 
           <Modal visible={deleteModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
             <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
+              <View style={modalContentStyle}>
                 <ThemedText type="title" style={styles.modalTitle}>
                   Delete account?
                 </ThemedText>
@@ -409,12 +437,13 @@ function MenuRow({
   onPress: () => void;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
-    <Pressable style={[styles.menuRow, !last && styles.rowDivider]} onPress={onPress}>
+    <Pressable style={[styles.menuRow, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]} onPress={onPress}>
       <ThemedText style={styles.menuLabel}>{label}</ThemedText>
       <View style={styles.menuRowRight}>
-        {value && <ThemedText style={styles.menuValue}>{value}</ThemedText>}
-        <SvgIcon name="chevron" size={16} color={Palette.faint} />
+        {value && <ThemedText style={[styles.menuValue, { color: palette.muted }]}>{value}</ThemedText>}
+        <SvgIcon name="chevron" size={16} color={palette.faint} />
       </View>
     </Pressable>
   );
@@ -435,19 +464,20 @@ function ToggleRow({
   disabled?: boolean;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.menuRow, !last && styles.rowDivider]}>
+    <View style={[styles.menuRow, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]}>
       <View style={styles.toggleTextWrap}>
         <ThemedText style={styles.menuLabel}>{label}</ThemedText>
-        <ThemedText style={styles.toggleDescription}>{description}</ThemedText>
+        <ThemedText style={[styles.toggleDescription, { color: palette.muted }]}>{description}</ThemedText>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ true: Palette.teal, false: Palette.line }}
+        trackColor={{ true: palette.teal, false: palette.line }}
         thumbColor="#FFFFFF"
-        style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }], transitionDuration: '250ms' }}
+        style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
       />
     </View>
   );
@@ -455,10 +485,17 @@ function ToggleRow({
 
 const styles = StyleSheet.create({
   listCard: {
-    backgroundColor: Palette.surface,
     borderRadius: 16,
     marginBottom: 20,
     paddingHorizontal: 16,
+  },
+  themeSection: {
+    paddingVertical: 16,
+    gap: 12,
+  },
+  themeChips: {
+    flexDirection: 'row',
+    gap: 8,
   },
   menuRow: {
     flexDirection: 'row',
@@ -469,7 +506,6 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.line,
   },
   menuLabel: {
     fontSize: 15,
@@ -525,7 +561,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   dangerLabel: {
-    color: Palette.risk,
     fontSize: 15,
   },
   versionText: {
@@ -542,7 +577,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Palette.surface,
     borderRadius: 32,
     padding: 20,
     width: '100%',

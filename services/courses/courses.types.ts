@@ -1,4 +1,4 @@
-/** Wire types for courses — mirror `lokkhyo_server/schemas/course.ts`. */
+/** Wire types for courses — mirror `lokkhyo-server/schemas/course.ts`. */
 
 export interface CourseDto {
   id: string;

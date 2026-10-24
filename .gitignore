@@ -12,6 +12,7 @@ expo-env.d.ts
 # Native
 .kotlin/
 *.orig.*
+*.keystore
 *.jks
 *.p8
 *.p12
@@ -25,7 +26,6 @@ expo-env.d.ts
 npm-debug.*
 yarn-debug.*
 yarn-error.*
-yarn.lock
 # macOS
 .DS_Store
 *.pem
@@ -47,10 +47,6 @@ CLAUDE.MD
 
 .pnp.*
 
-credentials.json
-google-services.json
-lokkhyo-dev.jks
-android/app/google-services.json
 
 # Android
 android/.gradle/
@@ -64,11 +60,8 @@ android/local.properties
 android/app/*.jks
 android/app/*.keystore
 
-# Lock files
-yarn.lock
+# Lock files — yarn.lock is committed so CI can install with --frozen-lockfile
 package-lock.json
 
 android/
 ios/
-/android/
-/ios/

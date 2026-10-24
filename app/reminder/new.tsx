@@ -1,5 +1,5 @@
 import { ExternalPathString, useLocalSearchParams, useRouter } from 'expo-router';
-import { Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -23,6 +23,7 @@ export default function ReminderFormScreen() {
   const { courseId, reminderId } = useLocalSearchParams<{ courseId?: string; reminderId?: string }>();
   const router = useRouter();
   const { courses } = useCourses();
+  const { palette } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState(courseId ?? '');
   const effectiveCourseId = courseId ?? selectedCourseId;
   const course = courses.find((c) => c.id === effectiveCourseId);
@@ -110,7 +111,7 @@ export default function ReminderFormScreen() {
                   />
                 ))}
               </View>
-              {errors.course && <ThemedText style={styles.error}>{errors.course}</ThemedText>}
+              {errors.course && <ThemedText style={[styles.error, { color: palette.risk }]}>{errors.course}</ThemedText>}
             </View>
           )}
 
@@ -199,7 +200,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   error: {
-    color: Palette.risk,
     fontSize: 13,
   },
 });

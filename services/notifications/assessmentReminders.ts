@@ -1,18 +1,13 @@
-import * as Notifications from 'expo-notifications';
-import { Platform } from 'react-native';
-
 import {
-  ASSESSMENT_CHANNEL_ID,
   ASSESSMENT_NOTIFICATION_PREFIX,
   cancelNotificationsByPrefix,
   ensureNotificationChannels,
-  NOTIFICATION_TYPE_ASSESSMENT_REMINDER,
   setGlobalNotificationHandler,
 } from '@/services/notifications/notificationsCore';
 import { fetchCourses } from '@/services/courses/courses.hooks';
 import { fetchCourseAssessments } from '@/services/assessments/assessments.services';
 import { fetchAllReminders } from '@/services/reminders/reminders.services';
-import { getUpcomingAssessmentReminders, buildAssessmentReminderContent, toDateKey } from '@/lib/reminders';
+import { getUpcomingAssessmentReminders } from '@/lib/reminders';
 import { getNotificationPreferences } from '@/lib/notificationPreferences';
 import type { Assessment, UpcomingReminder } from '@/lib/types';
 
@@ -67,108 +62,17 @@ export async function getUpcomingAssessmentRemindersForUser(userId: string) {
 }
 
 /**
- * The OS caps pending local notifications — 64 on iOS, 500 on Android — and
- * both drop the excess without telling anyone. Reminders are daily now, so a
- * heavy quiz week can exceed 64 on iOS on its own. Capping to the nearest
- * fires keeps the ones a student can still act on; the furthest-out reminders
- * are the ones lost, and they are the ones most likely to be re-synced closer
- * to the date anyway.
- */
-const SCHEDULE_CAP = Platform.OS === 'ios' ? 60 : 300;
-
-/**
- * Flattens each upcoming event into one scheduled notification per day it
- * still fires, then schedules them nearest-first.
- */
-async function scheduleReminders(
-  upcoming: ScheduledReminder[],
-  courseMap: Map<string, string>,
-): Promise<void> {
-  const now = new Date();
-  const pending: { identifier: string; reminder: ScheduledReminder; triggerDate: Date }[] = [];
-
-  for (const reminder of upcoming) {
-    const isUpcoming = reminder.source === 'upcoming';
-    // The day is part of the identifier: each day is its own one-off, and
-    // cancelNotificationsByPrefix still clears them all together on resync.
-    const base = isUpcoming
-      ? `${ASSESSMENT_NOTIFICATION_PREFIX}upcoming.${reminder.assessmentId}`
-      : `${ASSESSMENT_NOTIFICATION_PREFIX}${reminder.assessmentId}`;
-
-    for (const triggerDate of reminder.triggerDates) {
-      pending.push({ identifier: `${base}.${toDateKey(triggerDate)}`, reminder, triggerDate });
-    }
-  }
-
-  pending.sort((a, b) => a.triggerDate.getTime() - b.triggerDate.getTime());
-
-  if (pending.length > SCHEDULE_CAP) {
-    console.warn(
-      `[assessmentReminders] ${pending.length} daily reminders exceed the ${SCHEDULE_CAP} scheduling cap; ` +
-        `dropping the ${pending.length - SCHEDULE_CAP} furthest out.`,
-    );
-  }
-
-  for (const item of pending.slice(0, SCHEDULE_CAP)) {
-    const { identifier, reminder, triggerDate } = item;
-    const isUpcoming = reminder.source === 'upcoming';
-    const courseCode = courseMap.get(reminder.courseId);
-    const content = buildAssessmentReminderContent(
-      { type: reminder.type, name: reminder.name, date: reminder.date },
-      courseCode,
-      now,
-    );
-
-    const trigger: Notifications.DateTriggerInput = {
-      type: Notifications.SchedulableTriggerInputTypes.DATE,
-      date: triggerDate,
-      ...(Platform.OS === 'android' ? { channelId: ASSESSMENT_CHANNEL_ID } : {}),
-    };
-
-    await Notifications.scheduleNotificationAsync({
-      identifier,
-      content: {
-        title: content.title,
-        body: content.body,
-        data: {
-          type: NOTIFICATION_TYPE_ASSESSMENT_REMINDER,
-          courseId: reminder.courseId,
-          ...(isUpcoming
-            ? { upcoming: true, reminderId: reminder.assessmentId }
-            : { assessmentId: reminder.assessmentId }),
-        },
-      },
-      trigger,
-    });
-  }
-}
-
-/**
  * Fetches upcoming assessments from the API and schedules reminders.
  * Idempotent: cancel all previous assessment reminders, then reschedule.
  */
-export async function syncAssessmentReminders(userId: string): Promise<void> {
+export async function syncAssessmentReminders(_userId: string): Promise<void> {
   try {
     setGlobalNotificationHandler();
     await ensureNotificationChannels();
 
-    const prefs = await getNotificationPreferences();
-    if (!prefs.assessmentRemindersEnabled) {
-      await cancelNotificationsByPrefix(ASSESSMENT_NOTIFICATION_PREFIX);
-      return;
-    }
-
-    let upcoming: ScheduledReminder[];
-    let courseMap: Map<string, string>;
-    try {
-      ({ upcoming, courseMap } = await getUpcomingAssessmentRemindersForUser(userId));
-    } catch (e) {
-      console.warn('[assessmentReminders] Fetch failed, keeping existing schedules:', e);
-      return;
-    }
-
+    // Android and iOS both receive server-side deadline reminders via Expo push (Phase 4).
+    // Cancel any local scheduled assessment notifications to prevent duplicates.
     await cancelNotificationsByPrefix(ASSESSMENT_NOTIFICATION_PREFIX);
-    await scheduleReminders(upcoming, courseMap);
   } catch (e) {
     console.warn('[assessmentReminders] Sync failed:', e);
   }

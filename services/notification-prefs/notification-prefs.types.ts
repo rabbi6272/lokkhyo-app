@@ -1,4 +1,4 @@
-/** Wire types — mirror `notificationPrefsSchema` in `lokkhyo_server/schemas/user.ts`. */
+/** Wire types — mirror `notificationPrefsSchema` in `lokkhyo-server/schemas/user.ts`. */
 
 export type NotificationCategoryDto = 'ROUTINE' | 'ATTENDANCE' | 'ATTENDANCE_RISK' | 'DEADLINE' | 'GRADE';
 

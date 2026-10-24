@@ -1,9 +1,10 @@
 import { Link, type Href } from 'expo-router';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Pressable, View, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
-import { Palette, Radius, Space } from '@/constants/theme';
 import { SvgIcon } from './SvgIcon';
+import { useTheme } from '@/providers/theme-provider';
+import type { Palette, Theme } from '@/constants/theme';
 
 type PageHeaderProps = {
   title: string;
@@ -20,8 +21,10 @@ type PageHeaderProps = {
 };
 
 export function PageHeader({ title, eyebrow, actions, actionLabel = 'Add' }: PageHeaderProps) {
+  const { palette, radius, space } = useTheme();
+
   return (
-    <View style={styles.header}>
+    <View style={styles.header(space)}>
       <View style={styles.text}>
         {eyebrow ? <ThemedText type="eyebrow">{eyebrow.toUpperCase()}</ThemedText> : null}
         <ThemedText type="title" numberOfLines={1}>
@@ -34,8 +37,8 @@ export function PageHeader({ title, eyebrow, actions, actionLabel = 'Add' }: Pag
             accessibilityRole="button"
             accessibilityLabel={actionLabel}
             hitSlop={6}
-            style={({ pressed }) => [styles.add, pressed && { backgroundColor: Palette.tealDeep }]}>
-            <SvgIcon name="plus" size={20} color="#FFFFFF" />
+            style={({ pressed }) => [styles.add(radius, palette), pressed && { backgroundColor: palette.tealDeep }]}>
+            <SvgIcon name="plus" size={20} color={palette.onTeal} />
           </Pressable>
         </Link>
       )}
@@ -43,21 +46,21 @@ export function PageHeader({ title, eyebrow, actions, actionLabel = 'Add' }: Pag
   );
 }
 
-const styles = StyleSheet.create({
-  header: {
+const styles = {
+  header: (space: Theme['space']): ViewStyle => ({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
-    paddingTop: Space.sm,
-    paddingBottom: Space.lg,
-  },
+    paddingTop: space.sm,
+    paddingBottom: space.lg,
+  }),
   text: { flex: 1, gap: 2 },
-  add: {
+  add: (radius: Theme['radius'], palette: Palette): ViewStyle => ({
     width: 40,
     height: 40,
-    borderRadius: Radius.pill,
-    backgroundColor: Palette.teal,
+    borderRadius: radius.pill,
+    backgroundColor: palette.teal,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-});
+  }),
+};

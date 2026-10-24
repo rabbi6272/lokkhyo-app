@@ -18,7 +18,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { Button } from '@/components/ui/Button';
 import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { Brand, Colors, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useSemesters } from '@/hooks/useSemesters';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/providers/auth-provider';
@@ -31,6 +31,8 @@ export default function ProfileScreen() {
   const { profileData, isLoading } = useProfile();
   const { semesters } = useSemesters();
   const { data: cgpa } = useCgpa(user?.uid);
+  const { palette, resolved, fontFamily } = useTheme();
+  const isDark = resolved === 'dark';
   const router = useRouter();
   const [signoutModalVisible, setSignoutModalVisible] = useState(false);
 
@@ -39,21 +41,40 @@ export default function ProfileScreen() {
   const email = user?.email ?? '';
 
   return (
-    <View style={styles.screen}>
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <View style={[styles.screen, { backgroundColor: palette.mist }]}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'light-content'} backgroundColor="transparent" translucent />
 
-      <SafeAreaView edges={['top']} style={styles.masthead}>
+      <SafeAreaView
+        edges={['top']}
+        style={[
+          styles.masthead,
+          {
+            backgroundColor: isDark ? palette.surface : palette.teal,
+            borderColor: palette.line,
+            borderBottomWidth: isDark ? StyleSheet.hairlineWidth : 0,
+          },
+        ]}>
         <View style={styles.mastheadInner}>
           {/* <Text style={styles.eyebrow}>LOKKHYO</Text> */}
 
           <View style={styles.identity}>
-            <Avatar name={fullName} photoUrl={profileData?.photoUrl} size={64} tone="onTeal" />
+            <Avatar name={fullName} photoUrl={profileData?.photoUrl} size={64} tone={isDark ? 'onPage' : 'onTeal'} />
             <View style={styles.identityText}>
-              <Text style={styles.name} numberOfLines={1}>
+              <Text
+                style={[
+                  styles.name,
+                  { color: isDark ? palette.ink : '#FFFFFF', fontFamily: fontFamily.displayBold },
+                ]}
+                numberOfLines={1}>
                 {fullName}
               </Text>
               {email ? (
-                <Text style={styles.email} numberOfLines={1}>
+                <Text
+                  style={[
+                    styles.email,
+                    { color: isDark ? palette.muted : 'rgba(255,255,255,0.85)', fontFamily: fontFamily.regular },
+                  ]}
+                  numberOfLines={1}>
                   {email}
                 </Text>
               ) : null}
@@ -68,7 +89,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}>
         {isLoading ? (
           <View style={styles.loading}>
-            <ActivityIndicator color={Brand.teal} />
+            <ActivityIndicator color={palette.teal} />
             <ThemedText style={styles.loadingText}>Loading profile…</ThemedText>
           </View>
         ) : (
@@ -96,16 +117,21 @@ export default function ProfileScreen() {
                 label="Semesters"
                 onPress={() => router.push('/semesters')}
               />
-              <MenuRow
-                icon="courses"
-                label="Transcript & degree status"
-                onPress={() => router.push('/profile/transcript')}
-              />
               <MenuRow icon="routine" label="Routine" onPress={() => router.push('/(tabs)/routine')} />
               <MenuRow
                 icon="calender"
                 label="Attendance"
                 onPress={() => router.push('/(tabs)/attendance')}
+              />
+              <MenuRow
+                icon="courses"
+                label="Transcript & degree status"
+                onPress={() => router.push('/profile/transcript')}
+              />
+              <MenuRow
+                icon="courses"
+                label="What-if GPA simulator"
+                onPress={() => router.push('/profile/simulator')}
               />
               <MenuRow
                 icon="settings"
@@ -121,8 +147,8 @@ export default function ProfileScreen() {
                 style={({ pressed }) => [styles.row, pressed && styles.pressed]}
                 onPress={() => setSignoutModalVisible(true)}>
                 <View style={styles.rowLeft}>
-                  <SvgIcon name="logout" size={20} color={Brand.danger} />
-                  <ThemedText type="defaultSemiBold" style={styles.dangerLabel}>
+                  <SvgIcon name="logout" size={20} color={palette.risk} />
+                  <ThemedText type="defaultSemiBold" style={[styles.dangerLabel, { color: palette.risk }]}>
                     Log out
                   </ThemedText>
                 </View>
@@ -136,7 +162,7 @@ export default function ProfileScreen() {
 
       <Modal visible={signoutModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
             <ThemedText type="title" style={styles.modalTitle}>
               Sign out?
             </ThemedText>
@@ -175,23 +201,29 @@ function MenuRow({
   onPress: () => void;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
-      style={({ pressed }) => [styles.row, !last && styles.rowDivider, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.row,
+        !last && [styles.rowDivider, { borderBottomColor: palette.line }],
+        pressed && styles.pressed,
+      ]}
       onPress={onPress}>
       <View style={styles.rowLeft}>
-        <SvgIcon name={icon} size={20} color={Colors.icon} />
+        <SvgIcon name={icon} size={20} color={palette.muted} />
         <ThemedText style={styles.rowLabel}>{label}</ThemedText>
       </View>
-      <SvgIcon name="chevron" size={16} color={Palette.faint} />
+      <SvgIcon name="chevron" size={16} color={palette.faint} />
     </Pressable>
   );
 }
 
 function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.row, !last && styles.rowDivider]}>
+    <View style={[styles.row, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]}>
       <ThemedText style={styles.rowLabel}>{label}</ThemedText>
       <ThemedText type="defaultSemiBold" style={styles.rowValue} numberOfLines={1}>
         {value}
@@ -203,10 +235,8 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
-    backgroundColor: Brand.page,
   },
   masthead: {
-    backgroundColor: Brand.teal,
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
@@ -219,7 +249,6 @@ const styles = StyleSheet.create({
     fontFamily: 'InterSemiBold',
     fontSize: 12,
     letterSpacing: 3,
-    color: Brand.accent,
   },
   identity: {
     flexDirection: 'row',
@@ -232,14 +261,10 @@ const styles = StyleSheet.create({
     gap: 3,
   },
   name: {
-    fontFamily: 'InterSemiBold',
     fontSize: 21,
-    color: '#FFFFFF',
   },
   email: {
-    fontFamily: 'InterRegular',
     fontSize: 13,
-    color: 'rgba(255,255,255,0.85)',
   },
   editButton: {
     alignSelf: 'flex-start',
@@ -248,12 +273,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 50,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.45)',
   },
   editLabel: {
     fontFamily: 'InterSemiBold',
     fontSize: 13,
-    color: '#FFFFFF',
   },
   body: {
     flex: 1,
@@ -281,7 +304,6 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Brand.divider,
   },
   rowLeft: {
     flexDirection: 'row',
@@ -301,10 +323,8 @@ const styles = StyleSheet.create({
   chevron: {
     fontSize: 18,
     lineHeight: 20,
-    color: Palette.faint,
   },
   dangerLabel: {
-    color: Brand.danger,
     fontSize: 15,
   },
   pressed: {
@@ -323,7 +343,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalContent: {
-    backgroundColor: Palette.surface,
     borderRadius: 32,
     padding: 20,
     width: '100%',

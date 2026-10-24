@@ -10,7 +10,7 @@ export const ASSESSMENT_CHANNEL_NAME = 'Assessment Reminders';
 /**
  * Channel for notifications the *server* sends over FCM (evening attendance
  * digest, attendance-risk alerts). The id must match `SERVER_PUSH_CHANNEL` in
- * `lokkhyo_server/services/push.ts`.
+ * `lokkhyo-server/services/push.ts`.
  */
 export const SERVER_PUSH_CHANNEL_ID = 'server-alerts';
 export const SERVER_PUSH_CHANNEL_NAME = 'Attendance Alerts';

@@ -1,6 +1,6 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
-
-import { FontFamily, Palette, Type } from '@/constants/theme';
+import { Text, type TextProps, type TextStyle } from 'react-native';
+import { useTheme } from '@/providers/theme-provider';
+import { typeScale, type Palette } from '@/constants/theme';
 
 export type ThemedTextProps = TextProps & {
   color?: string;
@@ -23,20 +23,36 @@ export type ThemedTextProps = TextProps & {
  * names (`subtitle`, `defaultSemiBold`, …) are kept so existing screens follow.
  */
 export function ThemedText({ style, color, type = 'default', ...rest }: ThemedTextProps) {
-  return <Text style={[styles.base, styles[type], color ? { color } : undefined, style]} {...rest} />;
+  const { palette, fontFamily } = useTheme();
+  return (
+    <Text
+      style={[
+        baseStyle(palette),
+        textStyles[type]?.(palette, fontFamily),
+        color ? { color } : undefined,
+        style,
+      ]}
+      {...rest}
+    />
+  );
 }
 
-const styles = StyleSheet.create({
-  base: { color: Palette.ink },
-  default: Type.body,
-  defaultSemiBold: Type.bodyStrong,
-  title: Type.title,
-  normalTitle: Type.title,
-  subtitle: Type.heading,
-  heading: Type.heading,
-  caption: { ...Type.caption, color: Palette.muted },
-  eyebrow: { ...Type.eyebrow, color: Palette.muted },
-  figure: Type.figure,
-  number: Type.number,
-  link: { fontFamily: FontFamily.semibold, fontSize: 14, color: Palette.teal },
-});
+const baseStyle = (palette: Palette): TextStyle => ({ color: palette.ink });
+
+const textStyles: Record<string, (palette: Palette, fontFamily: any) => TextStyle> = {
+  default: () => ({ ...typeScale.body }),
+  defaultSemiBold: () => ({ ...typeScale.bodyStrong }),
+  title: () => ({ ...typeScale.title }),
+  normalTitle: () => ({ ...typeScale.title }),
+  subtitle: () => ({ ...typeScale.heading }),
+  heading: () => ({ ...typeScale.heading }),
+  caption: (palette: Palette) => ({ ...typeScale.caption, color: palette.muted }),
+  eyebrow: (palette: Palette) => ({ ...typeScale.eyebrow, color: palette.muted }),
+  figure: () => ({ ...typeScale.figure }),
+  number: () => ({ ...typeScale.number }),
+  link: (palette: Palette, fontFamily: any) => ({
+    fontFamily: fontFamily.semibold,
+    fontSize: 14,
+    color: palette.teal,
+  }),
+};

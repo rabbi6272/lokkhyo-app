@@ -3,9 +3,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { BackStep } from '@/components/ui/BackStep';
+import { Button } from '@/components/ui/Button';
 import { Section } from '@/components/ui/Section';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Brand, Palette } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useSemesters } from '@/hooks/useSemesters';
 import { useAuth } from '@/providers/auth-provider';
 import { useDegreeStatus, useTranscript } from '@/services/grades/grades.hooks';
@@ -20,6 +21,7 @@ export default function TranscriptScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { semesters } = useSemesters();
+  const { palette } = useTheme();
   const status = useDegreeStatus(user?.uid);
   const transcript = useTranscript(user?.uid);
 
@@ -39,7 +41,7 @@ export default function TranscriptScreen() {
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {loading ? (
             <View style={styles.centered}>
-              <ActivityIndicator color={Brand.teal} />
+              <ActivityIndicator color={palette.teal} />
             </View>
           ) : failed ? (
             <ThemedText style={styles.muted}>Could not load your transcript. Check your connection.</ThemedText>
@@ -95,6 +97,13 @@ export default function TranscriptScreen() {
                   </Section>
                 ))
               )}
+
+              <Button
+                title="Open What-If Simulator"
+                variant="secondary"
+                onPress={() => router.push('/profile/simulator')}
+                style={{ marginTop: 16 }}
+              />
             </>
           )}
         </ScrollView>
@@ -104,10 +113,14 @@ export default function TranscriptScreen() {
 }
 
 function Row({ label, value, last, danger }: { label: string; value: string; last?: boolean; danger?: boolean }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.row, !last && styles.divider]}>
+    <View style={[styles.row, !last && [styles.divider, { borderBottomColor: palette.line }]]}>
       <ThemedText style={styles.label}>{label}</ThemedText>
-      <ThemedText type="defaultSemiBold" style={[styles.value, danger && styles.danger]} numberOfLines={1}>
+      <ThemedText
+        type="defaultSemiBold"
+        style={[styles.value, danger && { color: palette.risk }]}
+        numberOfLines={1}>
         {value}
       </ThemedText>
     </View>
@@ -117,7 +130,6 @@ function Row({ label, value, last, danger }: { label: string; value: string; las
 const styles = StyleSheet.create({
   page: {
     flex: 1,
-    backgroundColor: Brand.page,
   },
   content: {
     paddingTop: 16,
@@ -141,7 +153,6 @@ const styles = StyleSheet.create({
   },
   divider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.line,
   },
   label: {
     opacity: 0.7,
@@ -149,8 +160,5 @@ const styles = StyleSheet.create({
   value: {
     flexShrink: 1,
     textAlign: 'right',
-  },
-  danger: {
-    color: Brand.danger,
   },
 });

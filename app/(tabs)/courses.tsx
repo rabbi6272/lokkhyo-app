@@ -8,7 +8,8 @@ import { ThemedText } from '@/components/ThemedText';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Palette, Space } from '@/constants/theme';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useSemesters } from '@/hooks/useSemesters';
 import { useProfile } from '@/hooks/useUserProfile';
@@ -23,6 +24,7 @@ export default function CoursesScreen() {
   const { user } = useAuth();
   const { courses, isLoading } = useCourses();
   const { semesters, isLoading: isSemestersLoading } = useSemesters();
+  const { palette } = useTheme();
   const { profileData } = useProfile();
 
   const progressQueries = useQueries({
@@ -76,7 +78,7 @@ export default function CoursesScreen() {
         {/* Group headings name a term, so wait for both lists rather than
             labelling every group "Unassigned" while terms are still arriving. */}
         {isLoading || isSemestersLoading ? (
-          <ActivityIndicator color={Palette.teal} style={styles.loading} />
+          <ActivityIndicator color={palette.teal} style={styles.loading} />
         ) : courses.length === 0 ? (
           <EmptyState
             title="No courses yet"
@@ -95,13 +97,13 @@ export default function CoursesScreen() {
 
             {groups.map((group) => (
               <View key={group.semesterId} style={styles.group}>
-                <View style={styles.groupHeader}>
+                <View style={[styles.groupHeader, { borderBottomColor: palette.line }]}>
                   <View style={styles.groupTitle}>
                     <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.groupName}>
                       {group.semester?.name ?? 'Unassigned'}
                     </ThemedText>
                     {group.semester?.status === 'active' && (
-                      <ThemedText type="eyebrow" color={Palette.teal}>
+                      <ThemedText type="eyebrow" color={palette.teal}>
                         ACTIVE
                       </ThemedText>
                     )}
@@ -145,7 +147,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Space.xs,
     paddingBottom: Space.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: Palette.line,
     marginBottom: Space.md,
   },
   groupTitle: { flexDirection: 'row', alignItems: 'center', gap: Space.sm, flex: 1 },
