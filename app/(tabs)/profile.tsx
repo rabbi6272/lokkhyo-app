@@ -3,7 +3,6 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StatusBar,
@@ -15,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { Avatar } from '@/components/ui/Avatar';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
@@ -160,32 +160,30 @@ export default function ProfileScreen() {
         )}
       </ScrollView>
 
-      <Modal visible={signoutModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
-            <ThemedText type="title" style={styles.modalTitle}>
-              Sign out?
-            </ThemedText>
-            <ThemedText>
-              Are you sure you want to sign out? You will need to log in again to access your account.
-            </ThemedText>
-            <View style={styles.modalButtons}>
-              <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
-              <Button
-                title="Sign Out"
-                variant="destructive"
-                onPress={async () => {
-                  try {
-                    await signOut();
-                  } catch {
-                    Alert.alert('Error', 'Failed to sign out. Please try again.');
-                  }
-                }}
-              />
-            </View>
+      <BlurredModal visible={signoutModalVisible} onClose={() => setSignoutModalVisible(false)}>
+        <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
+          <ThemedText type="title" style={styles.modalTitle}>
+            Sign out?
+          </ThemedText>
+          <ThemedText>
+            Are you sure you want to sign out? You will need to log in again to access your account.
+          </ThemedText>
+          <View style={styles.modalButtons}>
+            <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
+            <Button
+              title="Sign Out"
+              variant="destructive"
+              onPress={async () => {
+                try {
+                  await signOut();
+                } catch {
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                }
+              }}
+            />
           </View>
         </View>
-      </Modal>
+      </BlurredModal>
     </View>
   );
 }
@@ -284,7 +282,7 @@ const styles = StyleSheet.create({
   bodyContent: {
     paddingHorizontal: 16,
     paddingTop: 24,
-    paddingBottom: 32,
+    paddingBottom: 104,
   },
   loading: {
     flexDirection: 'row',

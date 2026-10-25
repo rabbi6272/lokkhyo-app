@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
 import { useTheme } from '@/providers/theme-provider';
 
+import { AppBlurView } from '@/components/ui/AppBlur';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 
 const TABS = [
@@ -15,16 +16,18 @@ const TABS = [
 export default function TabLayout() {
   const { palette, fontFamily } = useTheme();
 
-  const barStyle = StyleSheet.create({
-    bar: {
-      height: 72,
-      paddingTop: 6,
-      backgroundColor: palette.surface,
-      borderTopWidth: StyleSheet.hairlineWidth,
-      borderTopColor: palette.line,
-      elevation: 0,
-    },
-  }).bar;
+  const barStyle: ViewStyle = {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: 72,
+    paddingTop: 6,
+    backgroundColor: 'transparent',
+    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopColor: palette.line,
+    elevation: 0,
+  };
 
   return (
     <Tabs
@@ -35,6 +38,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: palette.teal,
         tabBarInactiveTintColor: palette.faint,
         tabBarStyle: barStyle,
+        tabBarBackground: () => <AppBlurView intensity={80} style={StyleSheet.absoluteFill} />,
         tabBarLabel: ({ focused, color, children }) => (
           <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>
             {children}

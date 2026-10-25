@@ -62,7 +62,7 @@ export default function HomeScreen() {
   const nextClass = findNextClass(slots);
   const nowMinutes = now.getHours() * 60 + now.getMinutes();
 
-  const contentStyle = StyleSheet.create({ content: { paddingBottom: space.xxl } }).content;
+  const contentStyle = StyleSheet.create({ content: { paddingBottom: space.xxl + 72 } }).content;
   const heroStyle = StyleSheet.create({
     hero: {
       backgroundColor: isDark ? palette.surface : palette.teal,

@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
+import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Chip } from '@/components/ui/Chip';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { useTheme } from '@/providers/theme-provider';
@@ -130,34 +131,36 @@ export function UnifiedAttendanceCalendar({
         ))}
       </View>
 
-      <Modal visible={!!selectedDate} transparent animationType="slide" onRequestClose={() => setSelectedDate(null)}>
-        <Pressable style={styles.modalOverlay(palette)} onPress={() => setSelectedDate(null)}>
-          <Pressable style={styles.modalContent(palette, radius, space)} onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="eyebrow">MARK ATTENDANCE</ThemedText>
-            <ThemedText type="heading" style={styles.modalTitle}>
-              {selectedDate ? formatDateHeading(selectedDate) : ''}
-            </ThemedText>
-            {selectedSessions.map((d) => (
-              <View key={`${d.courseId}_${d.session.slotId}`} style={styles.sessionRow(palette, space)}>
-                <ThemedText type="defaultSemiBold">{d.courseCode}</ThemedText>
-                <ThemedText type="caption">
-                  {formatTime12h(d.session.startTime)} – {formatTime12h(d.session.endTime)}
-                </ThemedText>
-                <View style={styles.chips(space)}>
-                  {STATUS_OPTIONS.map((opt) => (
-                    <Chip
-                      key={opt.value}
-                      label={opt.label}
-                      selected={d.session.status === opt.value}
-                      onPress={() => onMark(d.courseId, d.session.date, d.session.slotId, opt.value)}
-                    />
-                  ))}
-                </View>
+      <BlurredModal
+        visible={!!selectedDate}
+        onClose={() => setSelectedDate(null)}
+        placement="bottom"
+      >
+        <View style={styles.modalContent(palette, radius, space)}>
+          <ThemedText type="eyebrow">MARK ATTENDANCE</ThemedText>
+          <ThemedText type="heading" style={styles.modalTitle}>
+            {selectedDate ? formatDateHeading(selectedDate) : ''}
+          </ThemedText>
+          {selectedSessions.map((d) => (
+            <View key={`${d.courseId}_${d.session.slotId}`} style={styles.sessionRow(palette, space)}>
+              <ThemedText type="defaultSemiBold">{d.courseCode}</ThemedText>
+              <ThemedText type="caption">
+                {formatTime12h(d.session.startTime)} – {formatTime12h(d.session.endTime)}
+              </ThemedText>
+              <View style={styles.chips(space)}>
+                {STATUS_OPTIONS.map((opt) => (
+                  <Chip
+                    key={opt.value}
+                    label={opt.label}
+                    selected={d.session.status === opt.value}
+                    onPress={() => onMark(d.courseId, d.session.date, d.session.slotId, opt.value)}
+                  />
+                ))}
               </View>
-            ))}
-          </Pressable>
-        </Pressable>
-      </Modal>
+            </View>
+          ))}
+        </View>
+      </BlurredModal>
     </View>
   );
 }

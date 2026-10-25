@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Field } from '@/components/ui/InputField';
 import { Radius, Space } from '@/constants/theme';
@@ -95,45 +96,43 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
         <Button title={counted ? 'Regrade' : 'Record'} variant="secondary" onPress={open} style={styles.action} />
       </View>
 
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={() => setVisible(false)}>
-        <Pressable style={styles.overlay} onPress={() => setVisible(false)}>
-          <Pressable style={[styles.sheet, { backgroundColor: palette.surface }]} onPress={(e) => e.stopPropagation()}>
-            <ThemedText type="eyebrow">{counted ? 'NEW ATTEMPT' : 'FINAL GRADE'}</ThemedText>
-            <ThemedText type="heading" style={styles.sheetTitle}>
-              {counted ? 'Record a new attempt' : 'Record your final grade'}
-            </ThemedText>
-            <Field
-              label="Marks obtained"
-              keyboardType="numeric"
-              value={marks}
-              onChangeText={(v) => {
-                setMarks(v);
-                setErrors((e) => ({ ...e, marks: null }));
-              }}
-              error={errors.marks}
-              required
-            />
-            <Field
-              label="Out of"
-              keyboardType="numeric"
-              value={outOf}
-              onChangeText={(v) => {
-                setOutOf(v);
-                setErrors((e) => ({ ...e, outOf: null }));
-              }}
-              error={errors.outOf}
-              required
-            />
-            <ThemedText type="caption">
-              The letter grade and GPA are calculated by the server on the RUET scale.
-            </ThemedText>
-            <View style={styles.buttons}>
-              <Button title="Cancel" variant="secondary" onPress={() => setVisible(false)} style={styles.flex} />
-              <Button title="Save grade" onPress={save} loading={record.isPending} style={styles.flex} />
-            </View>
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <BlurredModal visible={visible} onClose={() => setVisible(false)} placement="bottom">
+        <View style={[styles.sheet, { backgroundColor: palette.surface }]}>
+          <ThemedText type="eyebrow">{counted ? 'NEW ATTEMPT' : 'FINAL GRADE'}</ThemedText>
+          <ThemedText type="heading" style={styles.sheetTitle}>
+            {counted ? 'Record a new attempt' : 'Record your final grade'}
+          </ThemedText>
+          <Field
+            label="Marks obtained"
+            keyboardType="numeric"
+            value={marks}
+            onChangeText={(v) => {
+              setMarks(v);
+              setErrors((e) => ({ ...e, marks: null }));
+            }}
+            error={errors.marks}
+            required
+          />
+          <Field
+            label="Out of"
+            keyboardType="numeric"
+            value={outOf}
+            onChangeText={(v) => {
+              setOutOf(v);
+              setErrors((e) => ({ ...e, outOf: null }));
+            }}
+            error={errors.outOf}
+            required
+          />
+          <ThemedText type="caption">
+            The letter grade and GPA are calculated by the server on the RUET scale.
+          </ThemedText>
+          <View style={styles.buttons}>
+            <Button title="Cancel" variant="secondary" onPress={() => setVisible(false)} style={styles.flex} />
+            <Button title="Save grade" onPress={save} loading={record.isPending} style={styles.flex} />
+          </View>
+        </View>
+      </BlurredModal>
     </View>
   );
 }

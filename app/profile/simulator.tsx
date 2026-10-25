@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +12,7 @@ import {
 
 import { ThemedText } from '@/components/ThemedText';
 import { BackStep } from '@/components/ui/BackStep';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Section } from '@/components/ui/Section';
@@ -504,29 +504,17 @@ export default function WhatIfSimulatorScreen() {
       </Wrapper>
 
       {/* Add Custom Course Modal */}
-      <Modal
-        visible={addModalVisible}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setAddModalVisible(false)}>
+      <BlurredModal visible={addModalVisible} onClose={() => setAddModalVisible(false)}>
         <View
           style={{
-            flex: 1,
-            backgroundColor: 'rgba(15, 30, 36, 0.45)',
-            justifyContent: 'center',
-            alignItems: 'center',
-            padding: space.lg,
+            width: '100%',
+            maxWidth: 400,
+            backgroundColor: palette.surface,
+            borderRadius: radius.lg,
+            padding: space.xl,
+            borderWidth: StyleSheet.hairlineWidth,
+            borderColor: palette.line,
           }}>
-          <View
-            style={{
-              width: '100%',
-              maxWidth: 400,
-              backgroundColor: palette.surface,
-              borderRadius: radius.lg,
-              padding: space.xl,
-              borderWidth: StyleSheet.hairlineWidth,
-              borderColor: palette.line,
-            }}>
             <ThemedText type="title" style={{ fontSize: 18, marginBottom: space.sm }}>
               Add Course to Scenario
             </ThemedText>
@@ -647,9 +635,8 @@ export default function WhatIfSimulatorScreen() {
               />
             </View>
           </View>
-        </View>
-      </Modal>
-    </>
+        </BlurredModal>
+      </>
   );
 }
 

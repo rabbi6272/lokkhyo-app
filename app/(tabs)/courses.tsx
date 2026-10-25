@@ -131,7 +131,7 @@ export default function CoursesScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: Space.xxl },
+  content: { paddingBottom: Space.xxl + 72 },
   loading: { marginTop: Space.xxl },
   summary: {
     flexDirection: 'row',

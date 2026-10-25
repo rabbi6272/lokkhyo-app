@@ -167,7 +167,7 @@ export default function AttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: Space.xxl },
+  content: { paddingBottom: Space.xxl + 72 },
   loading: { marginVertical: Space.lg },
   overview: { gap: Space.sm, marginBottom: Space.md },
   overviewRow: { flexDirection: 'row', alignItems: 'baseline', gap: Space.sm },

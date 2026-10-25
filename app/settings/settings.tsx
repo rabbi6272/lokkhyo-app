@@ -1,9 +1,10 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 
 import { BackStep } from '@/components/ui/BackStep';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { ThemedText } from '@/components/ThemedText';
@@ -349,77 +350,75 @@ export default function SettingsScreen() {
 
           <ThemedText style={styles.versionText}>App version 1.0.0</ThemedText>
 
-          <Modal visible={signoutModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
-            <View style={styles.modalOverlay}>
-              <View style={modalContentStyle}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  Sign out?
-                </ThemedText>
-                <ThemedText>
-                  Are you sure you want to sign out? You will need to log in again to access your account.
-                </ThemedText>
-                <View style={styles.modalButtons}>
-                  <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
-                  <Button
-                    title="Sign Out"
-                    variant="destructive"
-                    onPress={async () => {
-                      try {
-                        await signOut();
-                      } catch {
-                        Alert.alert('Error', 'Failed to sign out. Please try again.');
-                      }
-                    }}
-                  />
-                </View>
-              </View>
-            </View>
-          </Modal>
-
-          <Modal
-            visible={editingTime !== null}
-            backdropColor="rgba(15,30,36,0.45)"
-            animationType="fade"
-            onRequestClose={() => setEditingTime(null)}
+          <BlurredModal
+            visible={signoutModalVisible}
+            onClose={() => setSignoutModalVisible(false)}
           >
-            <Pressable style={styles.modalOverlay} onPress={() => setEditingTime(null)}>
-              <Pressable style={modalContentStyle} onPress={(e) => e.stopPropagation()}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  {editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
-                </ThemedText>
-                <ThemedText>{editingTime ? TIME_PICKER_COPY[editingTime].body : ''}</ThemedText>
-                <TimePicker
-                  hour={pendingHour}
-                  minute={pendingMinute}
-                  onSelect={(hour, minute) => {
-                    setPendingHour(hour);
-                    setPendingMinute(minute);
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Sign out?
+              </ThemedText>
+              <ThemedText>
+                Are you sure you want to sign out? You will need to log in again to access your account.
+              </ThemedText>
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
+                <Button
+                  title="Sign Out"
+                  variant="destructive"
+                  onPress={async () => {
+                    try {
+                      await signOut();
+                    } catch {
+                      Alert.alert('Error', 'Failed to sign out. Please try again.');
+                    }
                   }}
                 />
-                <View style={styles.modalButtons}>
-                  <Button title="Cancel" variant="secondary" onPress={() => setEditingTime(null)} />
-                  <Button title="Save" onPress={handleConfirmTime} />
-                </View>
-              </Pressable>
-            </Pressable>
-          </Modal>
-
-          <Modal visible={deleteModalVisible} backdropColor="rgba(15,30,36,0.45)" animationType="fade">
-            <View style={styles.modalOverlay}>
-              <View style={modalContentStyle}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  Delete account?
-                </ThemedText>
-                <ThemedText>
-                  This permanently deletes your profile and signs you out. This action cannot be undone.
-                </ThemedText>
-                <View style={styles.modalButtons}>
-                  <Button title="Cancel" variant="secondary" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
-                  <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
-                </View>
               </View>
             </View>
-          </Modal>
+          </BlurredModal>
+
+          <BlurredModal
+            visible={editingTime !== null}
+            onClose={() => setEditingTime(null)}
+          >
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                {editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
+              </ThemedText>
+              <ThemedText>{editingTime ? TIME_PICKER_COPY[editingTime].body : ''}</ThemedText>
+              <TimePicker
+                hour={pendingHour}
+                minute={pendingMinute}
+                onSelect={(hour, minute) => {
+                  setPendingHour(hour);
+                  setPendingMinute(minute);
+                }}
+              />
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="secondary" onPress={() => setEditingTime(null)} />
+                <Button title="Save" onPress={handleConfirmTime} />
+              </View>
+            </View>
+          </BlurredModal>
+
+          <BlurredModal
+            visible={deleteModalVisible}
+            onClose={() => setDeleteModalVisible(false)}
+          >
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Delete account?
+              </ThemedText>
+              <ThemedText>
+                This permanently deletes your profile and signs you out. This action cannot be undone.
+              </ThemedText>
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="secondary" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
+                <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
+              </View>
+            </View>
+          </BlurredModal>
         </ScrollView>
       </Wrapper>
     </>

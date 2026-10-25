@@ -177,7 +177,7 @@ export default function RoutineScreen() {
 }
 
 const styles = StyleSheet.create({
-  content: { paddingBottom: 32 },
+  content: { paddingBottom: 104 },
   week: {
     flexDirection: 'row',
     gap: 6,
