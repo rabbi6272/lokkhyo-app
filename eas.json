@@ -7,14 +7,29 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "bun": "1.4.4"
+      "bun": "1.4.4",
+      "android": {
+        "buildType": "apk"
+      }
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "bun": "1.4.4",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://lokkhyo-api.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "882450675886-0luhlvuahqt1idhhbj1enjd37a1iroaj.apps.googleusercontent.com"
+      },
+      "android": {
+        "buildType": "apk"
+      }
     },
     "production": {
       "distribution": "internal",
-      "autoIncrement": true,
+      "bun": "1.4.4",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://lokkhyo-api.onrender.com",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "882450675886-0luhlvuahqt1idhhbj1enjd37a1iroaj.apps.googleusercontent.com"
+      },
       "android": {
         "buildType": "apk"
       }

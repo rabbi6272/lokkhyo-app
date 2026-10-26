@@ -60,7 +60,7 @@ export interface AppBlurViewProps {
  * in environments or dev builds without the native ExpoBlurView module.
  */
 export function AppBlurView({
-  intensity = 60,
+  intensity = 40,
   tint,
   style,
   overlayColor,
@@ -84,7 +84,7 @@ export function AppBlurView({
         <NativeBlurView
           intensity={intensity}
           tint={resolvedTint}
-          experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+          blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
@@ -163,7 +163,7 @@ export function BlurredModal({
           <NativeBlurView
             intensity={blurIntensity}
             tint={resolvedTint}
-            experimentalBlurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+            blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
             style={StyleSheet.absoluteFill}
           />
         ) : null}

@@ -38,7 +38,7 @@ export default function TabLayout() {
         tabBarActiveTintColor: palette.teal,
         tabBarInactiveTintColor: palette.faint,
         tabBarStyle: barStyle,
-        tabBarBackground: () => <AppBlurView intensity={80} style={StyleSheet.absoluteFill} />,
+        tabBarBackground: () => <AppBlurView intensity={30} style={StyleSheet.absoluteFill} />,
         tabBarLabel: ({ focused, color, children }) => (
           <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>
             {children}
@@ -65,7 +65,7 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontSize: 11, paddingTop: 2 },
+  label: { fontSize: 12, paddingTop: 2 },
   iconWrap: { alignItems: 'center', gap: 4 },
   /** A short bar above the active tab's icon — the only active-state decoration. */
   marker: { width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent', marginTop: -6 },
