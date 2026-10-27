@@ -362,7 +362,7 @@ export default function SettingsScreen() {
                 Are you sure you want to sign out? You will need to log in again to access your account.
               </ThemedText>
               <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
+                <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
                 <Button
                   title="Sign Out"
                   variant="destructive"
@@ -396,7 +396,7 @@ export default function SettingsScreen() {
                 }}
               />
               <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="secondary" onPress={() => setEditingTime(null)} />
+                <Button title="Cancel" variant="ghost" onPress={() => setEditingTime(null)} />
                 <Button title="Save" onPress={handleConfirmTime} />
               </View>
             </View>
@@ -414,7 +414,7 @@ export default function SettingsScreen() {
                 This permanently deletes your profile and signs you out. This action cannot be undone.
               </ThemedText>
               <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="secondary" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
+                <Button title="Cancel" variant="ghost" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
                 <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
               </View>
             </View>

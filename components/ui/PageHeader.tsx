@@ -38,7 +38,7 @@ export function PageHeader({ title, eyebrow, actions, actionLabel = 'Add' }: Pag
             accessibilityLabel={actionLabel}
             hitSlop={6}
             style={({ pressed }) => [styles.add(radius, palette), pressed && { backgroundColor: palette.tealDeep }]}>
-            <SvgIcon name="plus" size={20} color={palette.onTeal} />
+            <SvgIcon name="plus" size={22} color={palette.tealDeep} />
           </Pressable>
         </Link>
       )}

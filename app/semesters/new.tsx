@@ -67,8 +67,8 @@ export default function NewSemesterScreen() {
   return (
     <>
       <BackStep title="New semester" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Section title="TERM">
             <Field
               label="Semester name"

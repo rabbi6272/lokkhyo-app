@@ -169,7 +169,7 @@ export default function ProfileScreen() {
             Are you sure you want to sign out? You will need to log in again to access your account.
           </ThemedText>
           <View style={styles.modalButtons}>
-            <Button title="Cancel" variant="secondary" onPress={() => setSignoutModalVisible(false)} />
+            <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
             <Button
               title="Sign Out"
               variant="destructive"

@@ -195,7 +195,7 @@ export default function EditProfileScreen() {
   return (
     <>
       <BackStep title="Edit profile" onBack={() => navigation.goBack()} />
-      <Wrapper noTopMargin style={styles.page}>
+      <Wrapper noTopMargin keyboardAvoiding style={styles.page}>
         <ScrollView
           style={styles.scroll}
           contentContainerStyle={styles.content}
@@ -259,7 +259,7 @@ export default function EditProfileScreen() {
             title="CURRENT SEMESTER"
             action={
               <Pressable accessibilityRole="button" onPress={() => setModalVisible(true)}>
-                <Text style={[styles.addText, { backgroundColor: palette.tealSoft, color: palette.teal }]}>+ Add</Text>
+                <Text style={[styles.addText, { color: palette.teal }]}>+Add</Text>
               </Pressable>
             }>
             {semesters.length === 0 ? (
@@ -287,7 +287,7 @@ export default function EditProfileScreen() {
           </Section>
 
           <View style={styles.actions}>
-            <Button title="Cancel" variant="secondary" onPress={handleCancel} />
+            <Button title="Cancel" variant="ghost" onPress={handleCancel} />
             <Button title="Save changes" onPress={handleSave} loading={updateProfile.isPending} />
           </View>
 

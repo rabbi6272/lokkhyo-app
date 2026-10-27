@@ -135,6 +135,7 @@ export function UnifiedAttendanceCalendar({
         visible={!!selectedDate}
         onClose={() => setSelectedDate(null)}
         placement="bottom"
+        animationType='fade'
       >
         <View style={styles.modalContent(palette, radius, space)}>
           <ThemedText type="eyebrow">MARK ATTENDANCE</ThemedText>

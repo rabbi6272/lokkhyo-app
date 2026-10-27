@@ -1,5 +1,7 @@
 import { Tabs } from 'expo-router';
 import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { BlurTargetView } from 'expo-blur';
+import { createRef, useRef, type RefObject } from 'react';
 import { useTheme } from '@/providers/theme-provider';
 
 import { AppBlurView } from '@/components/ui/AppBlur';
@@ -15,6 +17,12 @@ const TABS = [
 
 export default function TabLayout() {
   const { palette, fontFamily } = useTheme();
+  // One blur target per screen: the tab bar is a sibling of the screens, never inside the view it blurs.
+  const targets = useRef(new Map<string, RefObject<View | null>>()).current;
+  const targetFor = (key: string) => {
+    if (!targets.has(key)) targets.set(key, createRef<View>());
+    return targets.get(key)!;
+  };
 
   const barStyle: ViewStyle = {
     position: 'absolute',
@@ -31,20 +39,27 @@ export default function TabLayout() {
 
   return (
     <Tabs
-      screenOptions={{
+      screenLayout={({ route, children }) => (
+        <BlurTargetView ref={targetFor(route.key)} style={styles.screen}>
+          {children}
+        </BlurTargetView>
+      )}
+      screenOptions={({ route }) => ({
         headerShown: false,
         animation: 'shift',
         lazy: true,
         tabBarActiveTintColor: palette.teal,
         tabBarInactiveTintColor: palette.faint,
         tabBarStyle: barStyle,
-        tabBarBackground: () => <AppBlurView intensity={30} style={StyleSheet.absoluteFill} />,
+        tabBarBackground: () => (
+          <AppBlurView intensity={30} blurTarget={targetFor(route.key)} style={StyleSheet.absoluteFill} />
+        ),
         tabBarLabel: ({ focused, color, children }) => (
           <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>
             {children}
           </Text>
         ),
-      }}>
+      })}>
       {TABS.map((tab) => (
         <Tabs.Screen
           key={tab.name}
@@ -65,6 +80,7 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1 },
   label: { fontSize: 12, paddingTop: 2 },
   iconWrap: { alignItems: 'center', gap: 4 },
   /** A short bar above the active tab's icon — the only active-state decoration. */

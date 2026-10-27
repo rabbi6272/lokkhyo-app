@@ -125,8 +125,11 @@ export default function AssessmentFormScreen() {
   return (
     <>
       <BackStep title={isEditing ? 'Edit mark' : 'Add mark'} onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
 
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" >Type</ThemedText>

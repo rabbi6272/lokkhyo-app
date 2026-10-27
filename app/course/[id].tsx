@@ -12,6 +12,7 @@ import { EmptyState } from '@/components/ui/EmptyState';
 import { ProgressRing } from '@/components/ui/ProgressRing';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SvgIcon } from '@/components/ui/SvgIcon';
+import { Wrapper } from '@/components/ui/Wrapper';
 import { Radius, Space } from '@/constants/theme';
 import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
@@ -103,12 +104,12 @@ export default function CourseDetailScreen() {
 
   if (!course) {
     return (
-      <View style={[styles.page, { backgroundColor: palette.mist }]}>
+      <>
         <BackStep title="Course" onBack={() => router.back()} />
-        <View style={[styles.centered, { backgroundColor: palette.mist }]}>
+        <Wrapper noTopMargin style={styles.centered}>
           <ThemedText type="caption">This course no longer exists.</ThemedText>
-        </View>
-      </View>
+        </Wrapper>
+      </>
     );
   }
 
@@ -117,8 +118,9 @@ export default function CourseDetailScreen() {
     .join(' · ');
 
   return (
-    <View style={[styles.page, { backgroundColor: palette.mist }]}>
+    <>
       <BackStep title={course.code} onBack={() => router.back()} />
+      <Wrapper noTopMargin>
       <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
           <ThemedText type="title" style={styles.courseTitle}>
@@ -256,14 +258,14 @@ export default function CourseDetailScreen() {
           <AttendanceMeter code={course.code} stats={attendanceStats} />
         </Card>
       </ScrollView>
-    </View>
+      </Wrapper>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  page: { flex: 1 },
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  content: { paddingHorizontal: Space.lg, paddingBottom: Space.xxl },
+  content: { paddingBottom: Space.xxl },
   header: { gap: 2, marginTop: Space.xs, marginBottom: Space.lg },
   courseTitle: { fontSize: 22, lineHeight: 28 },
   progress: { flexDirection: 'row', alignItems: 'center', gap: Space.lg },

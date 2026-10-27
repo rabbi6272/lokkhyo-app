@@ -79,8 +79,8 @@ export default function NewCourseScreen() {
   return (
     <>
       <BackStep title="New course" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView>
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView style={styles.flex} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={{ paddingLeft: 8 }}>Semester</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>

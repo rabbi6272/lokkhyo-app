@@ -9,17 +9,20 @@ export function Wrapper({
   style,
   children,
   noTopMargin,
+  keyboardAvoiding,
 }: {
   style?: StyleProp<ViewStyle>;
   children: ReactNode;
   noTopMargin?: boolean;
+  /** Also lift content above the keyboard on Android (iOS always does). */
+  keyboardAvoiding?: boolean;
 }) {
   const { palette, space, resolved } = useTheme();
 
   return (
     <KeyboardAvoidingView
       style={[styles.flex, { backgroundColor: palette.mist }]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      behavior={Platform.OS === 'ios' || keyboardAvoiding ? 'padding' : undefined}>
       <StatusBar
         barStyle={resolved === 'dark' ? 'light-content' : 'dark-content'}
         backgroundColor="transparent"

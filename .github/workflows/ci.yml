@@ -2,24 +2,26 @@ name: CI
 
 on:
   push:
-    branches: [ rabbi, main ]
+    branches: [rabbi, main]
   pull_request:
-    branches: [ rabbi, main ]
+    branches: [rabbi, main]
 
 jobs:
   app-ci:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'yarn'
-          cache-dependency-path: yarn.lock
+          bun-version: latest
+
       - name: Install dependencies
-        run: yarn install --frozen-lockfile
+        run: bun install --frozen-lockfile
+
       - name: Typecheck + lint
-        run: yarn check:errors
+        run: bun run check:errors
+
       - name: Unit tests
-        run: yarn test
+        run: bun test

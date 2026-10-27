@@ -58,8 +58,11 @@ export default function NewRoutineSlotScreen() {
   return (
     <>
       <BackStep title="Add class" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex} >
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={{ paddingLeft: 8 }}>Day</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>

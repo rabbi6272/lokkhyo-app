@@ -107,7 +107,8 @@ export function useScheduledNotifications() {
     const sub = Notifications.addPushTokenListener((token) => {
       // Avoid infinite loop: ignore token event fired by our own getDevicePushTokenAsync
       if (isFetchingDevicePushToken()) return;
-      void registerThisDevice(String(token.data)).catch((e: unknown) =>
+      // force: a rotated token must bypass the cooldown and 24h cache.
+      void registerThisDevice(String(token.data), true).catch((e: unknown) =>
         console.warn('[notifications] Push re-registration failed:', e),
       );
     });

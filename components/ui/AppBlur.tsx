@@ -1,11 +1,10 @@
-import type { BlurTint } from 'expo-blur';
+import { BlurView, type BlurTint } from 'expo-blur';
+import { createRef, useEffect, useState, type RefObject } from 'react';
 import {
   Modal,
-  NativeModules,
   Platform,
   Pressable,
   StyleSheet,
-  UIManager,
   View,
   type ModalProps,
   type StyleProp,
@@ -14,42 +13,28 @@ import {
 
 import { useTheme } from '@/providers/theme-provider';
 
-function checkNativeBlurAvailable(): boolean {
-  if (Platform.OS === 'web') return false;
+/**
+ * Whether native blur is available on this platform.
+ *
+ * With the New Architecture (mandatory since SDK 55), the legacy
+ * `NativeUnimoduleProxy` / `UIManager.getViewManagerConfig` detection no
+ * longer works. Since `expo-blur` is always compiled into production and
+ * preview builds, we simply check that we're not on web.
+ */
+export const isNativeBlurAvailable = Platform.OS !== 'web';
 
-  try {
-    const unimoduleProxy = NativeModules?.NativeUnimoduleProxy;
-    if (unimoduleProxy?.viewManagersMetadata) {
-      return Boolean(unimoduleProxy.viewManagersMetadata.ExpoBlurView);
-    }
-    if (UIManager?.getViewManagerConfig) {
-      return Boolean(UIManager.getViewManagerConfig('ExpoBlurView'));
-    }
-  } catch {
-    return false;
-  }
-  return false;
-}
+/** Android only blurs with a `blurTarget`; without one it shows the tint alone. */
+const blursWithoutTarget = Platform.OS === 'ios';
 
-export const isNativeBlurAvailable = checkNativeBlurAvailable();
-
-// Dynamically require expo-blur only if the native view manager is registered in the host binary.
-// This prevents missing native view manager warnings on dev client APKs built without expo-blur.
-let NativeBlurView: React.ComponentType<any> | null = null;
-if (isNativeBlurAvailable) {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    NativeBlurView = require('expo-blur').BlurView;
-  } catch {
-    NativeBlurView = null;
-  }
-}
+/** Root-level blur target (set in `app/_layout.tsx`); modals open in their own window, so never inside it. */
+export const modalBlurTarget = createRef<View>();
 
 export interface AppBlurViewProps {
   intensity?: number;
   tint?: BlurTint;
   style?: StyleProp<ViewStyle>;
   overlayColor?: string;
+  blurTarget?: RefObject<View | null>;
   children?: React.ReactNode;
 }
 
@@ -64,27 +49,35 @@ export function AppBlurView({
   tint,
   style,
   overlayColor,
+  blurTarget,
   children,
 }: AppBlurViewProps) {
   const { resolved } = useTheme();
   const isDark = resolved === 'dark';
   const resolvedTint: BlurTint = tint ?? (isDark ? 'dark' : 'light');
 
+  // BlurView reads `blurTarget.current` only when the prop changes, and the target's ref
+  // attaches after this view mounts, so hand it over one commit later.
+  const [activeBlurTarget, setActiveBlurTarget] = useState<RefObject<View | null>>();
+  useEffect(() => setActiveBlurTarget(blurTarget), [blurTarget]);
+  const blurs = isNativeBlurAvailable && (blursWithoutTarget || !!activeBlurTarget);
+
   const defaultOverlay = isDark
-    ? isNativeBlurAvailable
-      ? 'rgba(15, 30, 36, 0.65)'
+    ? blurs
+      ? 'rgba(15, 30, 36, 0.45)'
       : 'rgba(15, 30, 36, 0.88)'
-    : isNativeBlurAvailable
-      ? 'rgba(255, 255, 255, 0.70)'
+    : blurs
+      ? 'rgba(255, 255, 255, 0.45)'
       : 'rgba(255, 255, 255, 0.90)';
 
   return (
     <View style={[styles.container, style]}>
-      {NativeBlurView ? (
-        <NativeBlurView
+      {isNativeBlurAvailable ? (
+        <BlurView
           intensity={intensity}
           tint={resolvedTint}
-          blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+          blurTarget={activeBlurTarget}
+          blurMethod={activeBlurTarget ? 'dimezisBlurView' : undefined}
           style={StyleSheet.absoluteFill}
         />
       ) : null}
@@ -123,7 +116,7 @@ export function BlurredModal({
   visible,
   onClose,
   placement = 'center',
-  blurIntensity = 40,
+  blurIntensity = 30,
   animationType,
   overlayStyle,
   dismissOnBackdropPress = true,
@@ -159,11 +152,12 @@ export function BlurredModal({
         ]}
       >
         {/* Optical blur layer (when native module is available) */}
-        {NativeBlurView ? (
-          <NativeBlurView
+        {isNativeBlurAvailable ? (
+          <BlurView
             intensity={blurIntensity}
             tint={resolvedTint}
-            blurMethod={Platform.OS === 'android' ? 'dimezisBlurView' : undefined}
+            blurTarget={modalBlurTarget}
+            blurMethod="dimezisBlurView"
             style={StyleSheet.absoluteFill}
           />
         ) : null}

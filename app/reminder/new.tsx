@@ -88,8 +88,11 @@ export default function ReminderFormScreen() {
   return (
     <>
       <BackStep title={isEditing ? 'Edit reminder' : 'New reminder'} onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <ThemedText style={styles.intro}>
             Get a notification before this {ASSESSMENT_TYPE_LABELS[type].toLowerCase()} — no marks needed. Record
             marks later when it happens.

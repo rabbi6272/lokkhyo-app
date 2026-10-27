@@ -1,10 +1,12 @@
 import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { StatusBar } from 'react-native';
+import { StatusBar, StyleSheet } from 'react-native';
+import { BlurTargetView } from 'expo-blur';
 import { useFonts } from 'expo-font';
 import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { modalBlurTarget } from '@/components/ui/AppBlur';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { QueryProvider, useIsRestoring } from '@/providers/query-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
@@ -74,7 +76,9 @@ function AppWithTheme() {
       <StatusBar barStyle={barStyle} backgroundColor="transparent" translucent />
       <QueryProvider>
         <AuthProvider>
-          <RootNavigator />
+          <BlurTargetView ref={modalBlurTarget} style={StyleSheet.absoluteFill}>
+            <RootNavigator />
+          </BlurTargetView>
         </AuthProvider>
       </QueryProvider>
     </>

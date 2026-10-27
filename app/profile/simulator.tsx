@@ -6,7 +6,6 @@ import {
   ScrollView,
   StyleSheet,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 
@@ -15,10 +14,10 @@ import { BackStep } from '@/components/ui/BackStep';
 import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
+import { Field } from '@/components/ui/InputField';
 import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { FontFamily } from '@/constants/theme';
 import { useCourses } from '@/hooks/useCourses';
 import { useProfile } from '@/hooks/useUserProfile';
 import {
@@ -158,14 +157,16 @@ export default function WhatIfSimulatorScreen() {
     });
   };
 
+  const parsedNewCredits = Number.parseFloat(newCredits);
+  const canAddCourse = newCode.trim() !== '' && parsedNewCredits > 0 && parsedNewCredits <= 10;
+
   // Add custom course
   const handleAddCustomCourse = () => {
-    const parsedCredits = Number.parseFloat(newCredits) || 3.0;
     const newItem: WhatIfCourse = {
       id: `custom-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      code: newCode.trim() || 'NEW 000',
+      code: newCode.trim(),
       title: newTitle.trim() || 'Custom Course',
-      credits: parsedCredits,
+      credits: parsedNewCredits,
       targetGrade: newGrade,
       isRetake: false,
     };
@@ -192,240 +193,126 @@ export default function WhatIfSimulatorScreen() {
 
   const targetCgpa = profileData?.targetCgpa ?? null;
 
+  const isEdited = courses !== null;
+  const closeAddModal = () => setAddModalVisible(false);
+
   return (
     <>
       <BackStep title="What-If Simulator" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={{ flex: 1, backgroundColor: palette.mist }}>
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        {/* The projection card sticks to the top so every grade change shows its effect immediately. */}
         <ScrollView
-          contentContainerStyle={{ padding: space.lg, paddingBottom: space.xl * 2 }}
-          showsVerticalScrollIndicator={false}>
-          {/* Unofficial Banner */}
-          <View
-            style={{
-              backgroundColor: palette.tealSoft,
-              borderRadius: radius.md,
-              padding: space.md,
-              marginBottom: space.lg,
-              borderWidth: 1,
-              borderColor: palette.teal,
-            }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs, marginBottom: 4 }}>
-              <View
-                style={{
-                  backgroundColor: palette.teal,
-                  paddingHorizontal: 8,
-                  paddingVertical: 2,
-                  borderRadius: radius.pill,
-                }}>
-                <Text style={{ fontFamily: FontFamily.display, fontSize: 10, color: palette.onTeal }}>
-                  PROJECTED — UNOFFICIAL
-                </Text>
-              </View>
-            </View>
-            <ThemedText style={{ fontSize: 13, color: palette.ink, lineHeight: 18 }}>
-              This what-if simulator calculates projected GPA locally using official RUET/BUET
-              grading policies and server sums. Scenarios are purely exploratory and never alter
-              your official record.
-            </ThemedText>
-          </View>
-
-          {isLoading ? (
-            <View style={{ paddingVertical: space.xl, alignItems: 'center' }}>
-              <ActivityIndicator color={palette.teal} size="large" />
-              <ThemedText style={{ marginTop: space.md, color: palette.muted }}>
-                Loading academic aggregate…
-              </ThemedText>
-            </View>
-          ) : (
-            <>
-              {/* Projection Comparison Card */}
-              <Card style={{ marginBottom: space.lg }}>
-                <ThemedText type="subtitle" style={{ marginBottom: space.md }}>
-                  Projected CGPA
+          stickyHeaderIndices={[0]}
+          contentContainerStyle={{ paddingTop: space.sm, paddingBottom: space.xl * 2 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          <View style={{ backgroundColor: palette.mist, paddingBottom: space.md }}>
+            {isLoading ? (
+              <View style={{ paddingVertical: space.xl, alignItems: 'center' }}>
+                <ActivityIndicator color={palette.teal} size="large" />
+                <ThemedText style={{ marginTop: space.md, color: palette.muted }}>
+                  Loading your results…
                 </ThemedText>
-
-                <View
-                  style={{
-                    flexDirection: 'row',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    paddingBottom: space.md,
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                    borderColor: palette.line,
-                  }}>
-                  {/* Current */}
-                  <View style={{ flex: 1 }}>
-                    <ThemedText style={{ fontSize: 12, color: palette.muted, textTransform: 'uppercase' }}>
-                      Current CGPA
-                    </ThemedText>
-                    <ThemedText type="title" style={{ fontSize: 26, color: palette.ink, marginTop: 4 }}>
+              </View>
+            ) : (
+              <Card>
+                <View style={styles.row}>
+                  <View style={styles.flex}>
+                    <ThemedText style={[styles.caption, { color: palette.muted }]}>Now</ThemedText>
+                    <ThemedText type="title" style={{ fontSize: 24, color: palette.ink }}>
                       {formatGpa(currentCgpa)}
                     </ThemedText>
-                    <ThemedText style={{ fontSize: 12, color: palette.muted }}>
+                    <ThemedText style={[styles.small, { color: palette.muted }]}>
                       {cgpaData?.totalCredits ?? 0} cr · {CLASSIFICATION_LABELS[currentClassification]}
                     </ThemedText>
                   </View>
 
-                  <View style={{ paddingHorizontal: space.sm }}>
-                    <SvgIcon name="chevron" size={20} color={palette.muted} />
-                  </View>
+                  <SvgIcon name="chevron" size={20} color={palette.faint} />
 
-                  {/* Projected */}
-                  <View style={{ flex: 1, alignItems: 'flex-end' }}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                      <ThemedText style={{ fontSize: 12, color: palette.teal, textTransform: 'uppercase', fontWeight: '700' }}>
-                        Projected
-                      </ThemedText>
+                  <View style={[styles.flex, { alignItems: 'flex-end' }]}>
+                    <View style={styles.inline}>
                       {deltaCgpa !== null && deltaCgpa !== 0 && (
                         <View
-                          style={{
-                            backgroundColor: deltaCgpa > 0 ? palette.goodSoft : palette.riskSoft,
-                            paddingHorizontal: 6,
-                            paddingVertical: 1,
-                            borderRadius: radius.pill,
-                          }}>
-                          <Text
-                            style={{
-                              fontSize: 11,
-                              fontWeight: '700',
-                              color: deltaCgpa > 0 ? palette.good : palette.risk,
-                            }}>
+                          style={[
+                            styles.badge,
+                            { backgroundColor: deltaCgpa > 0 ? palette.goodSoft : palette.riskSoft, borderRadius: radius.pill },
+                          ]}>
+                          <Text style={[styles.badgeText, { color: deltaCgpa > 0 ? palette.good : palette.risk }]}>
                             {deltaCgpa > 0 ? `+${deltaCgpa.toFixed(2)}` : deltaCgpa.toFixed(2)}
                           </Text>
                         </View>
                       )}
+                      <ThemedText style={[styles.caption, { color: palette.teal }]}>Projected</ThemedText>
                     </View>
-                    <ThemedText
-                      type="title"
-                      style={{ fontSize: 28, color: palette.teal, marginTop: 4 }}>
+                    <ThemedText type="title" style={{ fontSize: 28, color: palette.teal }}>
                       {formatGpa(projectedCgpa)}
                     </ThemedText>
-                    <ThemedText style={{ fontSize: 12, color: palette.muted }}>
+                    <ThemedText style={[styles.small, { color: palette.muted }]}>
                       {projection.projectedCredits} cr · {CLASSIFICATION_LABELS[projection.classification]}
                     </ThemedText>
                   </View>
                 </View>
 
-                {/* Target progress row */}
-                {targetCgpa !== null && (
-                  <View
-                    style={{
-                      flexDirection: 'row',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      paddingTop: space.md,
-                    }}>
-                    <ThemedText style={{ fontSize: 13, color: palette.muted }}>
-                      Target CGPA: <Text style={{ color: palette.ink, fontWeight: '600' }}>{targetCgpa.toFixed(2)}</Text>
+                {targetCgpa !== null && projectedCgpa !== null && (
+                  <View style={[styles.row, styles.targetRow, { borderColor: palette.line }]}>
+                    <ThemedText style={[styles.small, { color: palette.muted }]}>
+                      Target {targetCgpa.toFixed(2)}
                     </ThemedText>
                     <ThemedText
-                      style={{
-                        fontSize: 13,
-                        fontWeight: '600',
-                        color:
-                          projectedCgpa !== null && projectedCgpa >= targetCgpa
-                            ? palette.good
-                            : palette.warn,
-                      }}>
-                      {projectedCgpa !== null
-                        ? projectedCgpa >= targetCgpa
-                          ? `Target met (+${(projectedCgpa - targetCgpa).toFixed(2)})`
-                          : `${(targetCgpa - projectedCgpa).toFixed(2)} needed`
-                        : '—'}
+                      style={[styles.small, { fontWeight: '600', color: projectedCgpa >= targetCgpa ? palette.good : palette.warn }]}>
+                      {projectedCgpa >= targetCgpa
+                        ? `Met (+${(projectedCgpa - targetCgpa).toFixed(2)})`
+                        : `${(targetCgpa - projectedCgpa).toFixed(2)} short`}
                     </ThemedText>
                   </View>
                 )}
               </Card>
+            )}
+          </View>
 
-              {/* Course list with grade selectors */}
-              <Section
-                title={`COURSES IN SCENARIO (${activeCourses.length})`}
-                action={
-                  <Pressable onPress={handleReset} hitSlop={8}>
-                    <ThemedText style={{ fontSize: 12, color: palette.teal, fontWeight: '600' }}>
-                      Reset
-                    </ThemedText>
-                  </Pressable>
-                }>
-                {activeCourses.length === 0 ? (
-                  <Card style={{ alignItems: 'center', paddingVertical: space.xl }}>
-                    <ThemedText style={{ color: palette.muted, marginBottom: space.md }}>
-                      No active courses in this scenario.
-                    </ThemedText>
-                    <Button
-                      title="+ Add Custom Course"
-                      variant="secondary"
-                      onPress={() => setAddModalVisible(true)}
-                    />
-                  </Card>
-                ) : (
-                  activeCourses.map((c) => (
+          {!isLoading && (
+            <Section
+              title={`COURSES (${activeCourses.length})`}
+              action={
+                isEdited ? (
+                  <Button title="Reset" variant="ghost" onPress={handleReset} />
+                ) : undefined
+              }>
+              {activeCourses.length === 0 ? (
+                <ThemedText style={{ color: palette.muted, textAlign: 'center', paddingVertical: space.lg }}>
+                  No courses yet. Add one to see how it moves your CGPA.
+                </ThemedText>
+              ) : (
+                <View style={{ paddingVertical: space.lg }}>
+                  {activeCourses.map((c) => (
                     <Card key={c.id} style={{ marginBottom: space.md }}>
-                      <View
-                        style={{
-                          flexDirection: 'row',
-                          justifyContent: 'space-between',
-                          alignItems: 'flex-start',
-                          marginBottom: space.sm,
-                        }}>
-                        <View style={{ flex: 1, marginRight: space.sm }}>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
-                            <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
-                              {c.code}
-                            </ThemedText>
-                            <View
-                              style={{
-                                backgroundColor: palette.mist,
-                                paddingHorizontal: 6,
-                                paddingVertical: 2,
-                                borderRadius: radius.sm,
-                                borderWidth: StyleSheet.hairlineWidth,
-                                borderColor: palette.line,
-                              }}>
-                              <Text style={{ fontSize: 11, color: palette.muted, fontWeight: '600' }}>
-                                {c.credits} cr
-                              </Text>
-                            </View>
-                            {c.isRetake && (
-                              <View
-                                style={{
-                                  backgroundColor: palette.warnSoft,
-                                  paddingHorizontal: 6,
-                                  paddingVertical: 2,
-                                  borderRadius: radius.sm,
-                                }}>
-                                <Text style={{ fontSize: 11, color: palette.warn, fontWeight: '700' }}>
-                                  RETAKE
-                                </Text>
-                              </View>
-                            )}
-                          </View>
-                          <ThemedText
-                            style={{ fontSize: 13, color: palette.muted, marginTop: 2 }}
-                            numberOfLines={1}>
+                      <View style={[styles.row, { alignItems: 'flex-start', marginBottom: space.sm }]}>
+                        <View style={[styles.flex, { marginRight: space.sm }]}>
+                          <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
+                            {c.code} <Text style={[styles.small, { color: palette.muted }]}>· {c.credits} cr</Text>
+                          </ThemedText>
+                          <ThemedText style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
                             {c.title}
                           </ThemedText>
                         </View>
 
-                        {/* Actions: Retake toggle & delete if custom */}
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: space.xs }}>
+                        <View style={styles.inline}>
                           <Pressable
                             onPress={() => toggleCourseRetake(c.id)}
-                            style={{
-                              paddingHorizontal: 8,
-                              paddingVertical: 4,
-                              borderRadius: radius.sm,
-                              borderWidth: 1,
-                              borderColor: c.isRetake ? palette.warn : palette.line,
-                              backgroundColor: c.isRetake ? palette.warnSoft : palette.surface,
-                            }}>
-                            <Text
-                              style={{
-                                fontSize: 11,
-                                fontWeight: '600',
-                                color: c.isRetake ? palette.warn : palette.muted,
-                              }}>
-                              {c.isRetake ? 'Replacing prior grade' : 'Retake?'}
+                            accessibilityRole="switch"
+                            accessibilityState={{ checked: c.isRetake }}
+                            hitSlop={6}
+                            style={({ pressed }) => [
+                              styles.retake,
+                              pressed && styles.pressed,
+                              {
+                                borderRadius: radius.pill,
+                                borderColor: c.isRetake ? palette.warn : palette.line,
+                                backgroundColor: c.isRetake ? palette.warnSoft : palette.surface,
+                              },
+                            ]}>
+                            <Text style={[styles.badgeText, { color: c.isRetake ? palette.warn : palette.muted }]}>
+                              {c.isRetake ? '✓ Retake' : 'Retake'}
                             </Text>
                           </Pressable>
 
@@ -433,210 +320,111 @@ export default function WhatIfSimulatorScreen() {
                             <Pressable
                               onPress={() => removeCourse(c.id)}
                               hitSlop={8}
-                              style={{ padding: 4 }}>
+                              accessibilityRole="button"
+                              accessibilityLabel={`Remove ${c.code}`}
+                              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}>
                               <SvgIcon name="trash" size={16} color={palette.risk} />
                             </Pressable>
                           )}
                         </View>
                       </View>
 
-                      {/* Grade Selector Pills */}
-                      <ThemedText style={{ fontSize: 11, color: palette.muted, marginBottom: 6 }}>
-                        What if you score:
-                      </ThemedText>
-                      <ScrollView
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                        contentContainerStyle={{ gap: 6, paddingVertical: 2 }}>
-                        {SELECTABLE_GRADES.map((grade) => {
-                          const isSelected = c.targetGrade === grade;
-                          const isFail = grade === 'F';
-                          const isInc = grade === 'I';
-
-                          let activeBg = palette.teal;
-                          if (isFail) activeBg = palette.risk;
-                          if (isInc) activeBg = palette.muted;
-
-                          return (
-                            <Pressable
-                              key={grade}
-                              onPress={() => setCourseGrade(c.id, grade)}
-                              style={{
-                                minWidth: 38,
-                                height: 32,
-                                borderRadius: radius.sm,
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                                paddingHorizontal: 8,
-                                backgroundColor: isSelected ? activeBg : palette.mist,
-                                borderWidth: 1,
-                                borderColor: isSelected ? activeBg : palette.line,
-                              }}>
-                              <Text
-                                style={{
-                                  fontSize: 13,
-                                  fontWeight: isSelected ? '700' : '500',
-                                  color: isSelected
-                                    ? (isFail || isInc ? '#FFFFFF' : palette.onTeal)
-                                    : palette.ink,
-                                }}>
-                                {grade}
-                              </Text>
-                            </Pressable>
-                          );
-                        })}
-                      </ScrollView>
+                      <GradePicker value={c.targetGrade} onChange={(grade) => setCourseGrade(c.id, grade)} />
                     </Card>
-                  ))
-                )}
+                  ))}
+                </View>
+              )}
 
-                {/* Add Custom Course Button */}
-                <Button
-                  title="+ Add Custom Hypothetical Course"
-                  variant="secondary"
-                  onPress={() => setAddModalVisible(true)}
-                  style={{ marginTop: space.sm }}
-                />
-              </Section>
-            </>
+              <Button title="+ Add a course" variant="secondary" onPress={() => setAddModalVisible(true)} style={{ marginBottom: space.lg }} />
+            </Section>
           )}
+
+          <ThemedText style={[styles.small, { color: palette.faint, textAlign: 'center', marginTop: space.lg }]}>
+            Projection only. Your official record is never changed.
+          </ThemedText>
         </ScrollView>
       </Wrapper>
 
-      {/* Add Custom Course Modal */}
-      <BlurredModal visible={addModalVisible} onClose={() => setAddModalVisible(false)}>
+      <BlurredModal visible={addModalVisible} onClose={closeAddModal} placement="bottom">
         <View
           style={{
-            width: '100%',
-            maxWidth: 400,
             backgroundColor: palette.surface,
-            borderRadius: radius.lg,
+            borderTopLeftRadius: radius.lg,
+            borderTopRightRadius: radius.lg,
             padding: space.xl,
-            borderWidth: StyleSheet.hairlineWidth,
-            borderColor: palette.line,
+            gap: space.md,
           }}>
-            <ThemedText type="title" style={{ fontSize: 18, marginBottom: space.sm }}>
-              Add Course to Scenario
-            </ThemedText>
-            <ThemedText style={{ fontSize: 13, color: palette.muted, marginBottom: space.lg }}>
-              Add a future or hypothetical course to project your CGPA.
-            </ThemedText>
-
-            <ThemedText style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>
-              COURSE CODE
-            </ThemedText>
-            <TextInput
-              value={newCode}
-              onChangeText={setNewCode}
-              placeholder="e.g. CSE 4101"
-              placeholderTextColor={palette.faint}
-              style={{
-                height: 44,
-                backgroundColor: palette.mist,
-                borderRadius: radius.sm,
-                paddingHorizontal: space.md,
-                color: palette.ink,
-                marginBottom: space.md,
-                borderWidth: 1,
-                borderColor: palette.line,
-              }}
-            />
-
-            <ThemedText style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>
-              COURSE TITLE
-            </ThemedText>
-            <TextInput
-              value={newTitle}
-              onChangeText={setNewTitle}
-              placeholder="e.g. Machine Learning"
-              placeholderTextColor={palette.faint}
-              style={{
-                height: 44,
-                backgroundColor: palette.mist,
-                borderRadius: radius.sm,
-                paddingHorizontal: space.md,
-                color: palette.ink,
-                marginBottom: space.md,
-                borderWidth: 1,
-                borderColor: palette.line,
-              }}
-            />
-
-            <ThemedText style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>
-              CREDITS
-            </ThemedText>
-            <TextInput
-              value={newCredits}
-              onChangeText={setNewCredits}
-              placeholder="3.0"
-              keyboardType="decimal-pad"
-              placeholderTextColor={palette.faint}
-              style={{
-                height: 44,
-                backgroundColor: palette.mist,
-                borderRadius: radius.sm,
-                paddingHorizontal: space.md,
-                color: palette.ink,
-                marginBottom: space.md,
-                borderWidth: 1,
-                borderColor: palette.line,
-              }}
-            />
-
-            <ThemedText style={{ fontSize: 12, color: palette.muted, marginBottom: 4 }}>
-              TARGET GRADE
-            </ThemedText>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 6, marginBottom: space.xl, paddingVertical: 4 }}>
-              {SELECTABLE_GRADES.map((grade) => {
-                const isSelected = newGrade === grade;
-                return (
-                  <Pressable
-                    key={grade}
-                    onPress={() => setNewGrade(grade)}
-                    style={{
-                      minWidth: 38,
-                      height: 32,
-                      borderRadius: radius.sm,
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      paddingHorizontal: 8,
-                      backgroundColor: isSelected ? palette.teal : palette.mist,
-                      borderWidth: 1,
-                      borderColor: isSelected ? palette.teal : palette.line,
-                    }}>
-                    <Text
-                      style={{
-                        fontSize: 13,
-                        fontWeight: isSelected ? '700' : '500',
-                        color: isSelected ? palette.onTeal : palette.ink,
-                      }}>
-                      {grade}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-
-            <View style={{ flexDirection: 'row', gap: space.md }}>
-              <Button
-                title="Cancel"
-                variant="ghost"
-                onPress={() => setAddModalVisible(false)}
-                style={{ flex: 1 }}
-              />
-              <Button
-                title="Add to Scenario"
-                variant="primary"
-                onPress={handleAddCustomCourse}
-                style={{ flex: 1 }}
-              />
-            </View>
+          <ThemedText type="title" style={{ fontSize: 18 }}>
+            Add a course
+          </ThemedText>
+          <Field label="Course code" required value={newCode} onChangeText={setNewCode} placeholder="e.g. CSE 4101" autoCapitalize="characters" />
+          <Field label="Course title" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Machine Learning" />
+          <Field label="Credits" required value={newCredits} onChangeText={setNewCredits} placeholder="3.0" keyboardType="decimal-pad" />
+          <View style={{ gap: space.xs }}>
+            <ThemedText style={[styles.small, { color: palette.muted }]}>Expected grade</ThemedText>
+            <GradePicker value={newGrade} onChange={setNewGrade} />
           </View>
-        </BlurredModal>
-      </>
+          <View style={[styles.inline, { gap: space.md, marginTop: space.sm }]}>
+            <Button title="Cancel" variant="secondary" onPress={closeAddModal} style={styles.flex} />
+            <Button title="Add" onPress={handleAddCustomCourse} disabled={!canAddCourse} style={styles.flex} />
+          </View>
+        </View>
+      </BlurredModal>
+    </>
   );
 }
 
+/** All grades visible at once (wrapped), F in red, I in grey. */
+function GradePicker({ value, onChange }: { value: LetterGradeDto; onChange: (grade: LetterGradeDto) => void }) {
+  const { palette, radius } = useTheme();
+
+  return (
+    <View style={styles.grades}>
+      {SELECTABLE_GRADES.map((grade) => {
+        const selected = value === grade;
+        const activeBg = grade === 'F' ? palette.risk : grade === 'I' ? palette.muted : palette.teal;
+        return (
+          <Pressable
+            key={grade}
+            onPress={() => onChange(grade)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected }}
+            style={({ pressed }) => [
+              styles.grade,
+              pressed && styles.pressed,
+              {
+                borderRadius: radius.sm,
+                backgroundColor: selected ? activeBg : palette.mist,
+                borderColor: selected ? activeBg : palette.line,
+              },
+            ]}>
+            <Text
+              style={{
+                fontSize: 13,
+                fontWeight: selected ? '700' : '500',
+                color: selected ? (grade === 'F' || grade === 'I' ? '#FFFFFF' : palette.onTeal) : palette.ink,
+              }}>
+              {grade}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  flex: { flex: 1 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  caption: { fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
+  small: { fontSize: 12 },
+  badge: { paddingHorizontal: 6, paddingVertical: 1 },
+  badgeText: { fontSize: 11, fontWeight: '700' },
+  targetRow: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
+  retake: { minHeight: 32, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1 },
+  iconButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  pressed: { opacity: 0.6 },
+  grades: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  grade: { minWidth: 40, height: 34, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
+});
