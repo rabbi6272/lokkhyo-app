@@ -12,6 +12,7 @@ import { useSemesters } from '@/hooks/useSemesters';
 import { isNumeric, required } from '@/lib/validate';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { BackStep } from '@/components/ui/BackStep';
+import { FirebaseError } from '@/services/FirebaseError';
 
 export default function NewCourseScreen() {
   const router = useRouter();
@@ -28,6 +29,7 @@ export default function NewCourseScreen() {
   const [passMarks, setPassMarks] = useState('');
   const [ctWeight, setCtWeight] = useState('');
   const [teacherInput, setTeacherInput] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<string[]>([]);
   const [isLab, setIsLab] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
@@ -63,17 +65,22 @@ export default function NewCourseScreen() {
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
-    await createCourse.mutateAsync({
-      semesterId,
-      code: code.trim(),
-      title: title.trim(),
-      credits: Number(credits),
-      passMarks: Number(passMarks),
-      ctWeight: Number(ctWeight),
-      isLab,
-      courseTeachers: teachers,
-    });
-    router.back();
+    setSubmitError(null);
+    try {
+      await createCourse.mutateAsync({
+        semesterId,
+        code: code.trim(),
+        title: title.trim(),
+        credits: Number(credits),
+        passMarks: Number(passMarks),
+        ctWeight: Number(ctWeight),
+        isLab,
+        courseTeachers: teachers,
+      });
+      router.back();
+    } catch (error) {
+      setSubmitError(FirebaseError(error));
+    }
   };
 
   return (
@@ -193,6 +200,7 @@ export default function NewCourseScreen() {
             </>
           )}
 
+          {submitError ? <Text style={[styles.error, { color: palette.risk }]}>{submitError}</Text> : null}
           <Button title="Add course" onPress={handleSubmit} loading={createCourse.isPending} />
         </ScrollView>
       </Wrapper>

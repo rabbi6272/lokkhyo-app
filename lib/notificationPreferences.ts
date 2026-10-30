@@ -140,6 +140,14 @@ export async function getNotificationPreferences(): Promise<NotificationPreferen
   }
 }
 
+/** The one shared query entry, so every screen reading prefs costs one request per stale window. */
+export function notificationPrefsQuery(userId?: string | null) {
+  return {
+    queryKey: ['notificationPrefs', userId ?? 'anonymous'] as const,
+    queryFn: getNotificationPreferences,
+  };
+}
+
 /**
  * Cache first, so the scheduling that follows a toggle sees it immediately;
  * then the server. A failed server write is not fatal — the device keeps the

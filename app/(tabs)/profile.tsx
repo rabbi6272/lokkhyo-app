@@ -14,6 +14,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { Avatar } from '@/components/ui/Avatar';
+import { PageBackground } from '@/components/ui/Wrapper';
 import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Section } from '@/components/ui/Section';
@@ -41,7 +42,7 @@ export default function ProfileScreen() {
   const email = user?.email ?? '';
 
   return (
-    <View style={[styles.screen, { backgroundColor: palette.mist }]}>
+    <PageBackground>
       <StatusBar barStyle={isDark ? 'light-content' : 'light-content'} backgroundColor="transparent" translucent />
 
       <SafeAreaView
@@ -184,7 +185,7 @@ export default function ProfileScreen() {
           </View>
         </View>
       </BlurredModal>
-    </View>
+    </PageBackground>
   );
 }
 
@@ -231,9 +232,6 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
 }
 
 const styles = StyleSheet.create({
-  screen: {
-    flex: 1,
-  },
   masthead: {
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,

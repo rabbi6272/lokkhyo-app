@@ -259,7 +259,7 @@ export default function WhatIfSimulatorScreen() {
                       Target {targetCgpa.toFixed(2)}
                     </ThemedText>
                     <ThemedText
-                      style={[styles.small, { fontWeight: '600', color: projectedCgpa >= targetCgpa ? palette.good : palette.warn }]}>
+                      style={[styles.small, { fontFamily: 'InterSemiBold', color: projectedCgpa >= targetCgpa ? palette.good : palette.warn }]}>
                       {projectedCgpa >= targetCgpa
                         ? `Met (+${(projectedCgpa - targetCgpa).toFixed(2)})`
                         : `${(targetCgpa - projectedCgpa).toFixed(2)} short`}
@@ -401,7 +401,8 @@ function GradePicker({ value, onChange }: { value: LetterGradeDto; onChange: (gr
             <Text
               style={{
                 fontSize: 13,
-                fontWeight: selected ? '700' : '500',
+                // Weight via the font file, not fontWeight: Android's synthetic bold clips the last glyph.
+                fontFamily: selected ? 'InterSemiBold' : 'InterMedium',
                 color: selected ? (grade === 'F' || grade === 'I' ? '#FFFFFF' : palette.onTeal) : palette.ink,
               }}>
               {grade}
@@ -417,10 +418,10 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   inline: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  caption: { fontSize: 12, textTransform: 'uppercase', fontWeight: '600' },
+  caption: { fontSize: 12, textTransform: 'uppercase', fontFamily: 'InterSemiBold' },
   small: { fontSize: 12 },
   badge: { paddingHorizontal: 6, paddingVertical: 1 },
-  badgeText: { fontSize: 11, fontWeight: '700' },
+  badgeText: { fontSize: 11, fontFamily: 'InterSemiBold' },
   targetRow: { marginTop: 12, paddingTop: 12, borderTopWidth: StyleSheet.hairlineWidth },
   retake: { minHeight: 32, paddingHorizontal: 12, justifyContent: 'center', borderWidth: 1 },
   iconButton: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },

@@ -30,7 +30,7 @@ export function Chip({ label, selected, onPress }: ChipProps) {
 const styles = {
   chip: (radius: Theme['radius']): ViewStyle => ({
     paddingHorizontal: 16,
-    height: 36,
+    minHeight: 36,
     justifyContent: 'center',
     borderRadius: radius.pill,
     borderWidth: 1,

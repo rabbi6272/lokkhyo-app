@@ -1,11 +1,14 @@
 import { useQueries, useQueryClient } from '@tanstack/react-query';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AttendanceMeter } from '@/components/AttendanceMeter';
 import { CourseCard } from '@/components/CourseCard';
+import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
+import { Blobs } from '@/components/ui/Blobs';
 import { Card, Divider } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -13,11 +16,15 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
+import { useAllUpcomingReminders } from '@/hooks/useAllUpcomingReminders';
 import { useCourses } from '@/hooks/useCourses';
+import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useRoutines } from '@/hooks/useRoutines';
+import { useDeleteUpcomingReminder } from '@/hooks/useUpcomingReminders';
 import { useProfile } from '@/hooks/useUserProfile';
 import { DAY_NAMES, MONTH_NAMES } from '@/lib/constants';
-import { formatTime12h, getTodayOfWeek } from '@/lib/routine';
+import { buildReminderLine } from '@/lib/reminders';
+import { findSpotlightClass, formatTime12h, getTodayOfWeek } from '@/lib/routine';
 import { parseTime } from '@/lib/validate';
 import { useAuth } from '@/providers/auth-provider';
 import { courseAssessmentsQuery } from '@/services/assessments/assessments.hooks';
@@ -29,10 +36,13 @@ export default function HomeScreen() {
   const { profileData } = useProfile();
   const { courses } = useCourses();
   const { slots } = useRoutines();
-  const { palette, radius, space, resolved } = useTheme();
-  const isDark = resolved === 'dark';
+  const { reminders } = useAllUpcomingReminders();
+  const deleteUpcoming = useDeleteUpcomingReminder();
+  const prefs = useNotificationPreferences();
+  const { palette, radius, space } = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const now = useMinuteClock();
 
   // Home screen presents at most 3 courses. Only query details for those 3 to
   // avoid massive parallel network fan-out on cold start.
@@ -53,37 +63,28 @@ export default function HomeScreen() {
   }, [queryClient]);
 
   const firstName = profileData?.fullName?.split(' ')[0] || 'there';
-  const now = new Date();
   const today = getTodayOfWeek();
   const todayLabel = `${DAY_NAMES[today]}, ${now.getDate()} ${MONTH_NAMES[now.getMonth()]}`;
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
   const todaySlots = slots
     .filter((s) => s.dayOfWeek === today)
     .sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime));
-  const nextClass = findNextClass(slots);
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+  const spotlight = findSpotlightClass(slots, today, nowMinutes);
 
-  const contentStyle = StyleSheet.create({ content: { paddingBottom: space.xxl + 72 } }).content;
-  const heroStyle = StyleSheet.create({
-    hero: {
-      backgroundColor: isDark ? palette.surface : palette.teal,
-      borderRadius: radius.lg,
-      borderWidth: isDark ? 1 : 0,
-      borderColor: isDark ? palette.line : undefined,
-      padding: space.lg + 4,
-      gap: space.xs,
-    },
-  }).hero;
-  const heroRowStyle = StyleSheet.create({ heroRow: { flexDirection: 'row', alignItems: 'baseline', gap: space.md, marginTop: space.xs } }).heroRow;
-  const heroCourseStyle = StyleSheet.create({ heroCourse: { flexShrink: 1 } }).heroCourse;
-  const listCardStyle = StyleSheet.create({ listCard: { paddingVertical: 0 } }).listCard;
-  const slotRowStyle = StyleSheet.create({ slotRow: { flexDirection: 'row', alignItems: 'center', gap: space.md, paddingVertical: space.md } }).slotRow;
-  const slotTimeStyle = StyleSheet.create({ slotTime: { width: 72, color: palette.teal } }).slotTime;
-  const doneStyle = StyleSheet.create({ done: { opacity: 0.45 } }).done;
+  const todayIso = toIsoDate(now);
+  const nextDeadlines = reminders.filter((r) => r.date >= todayIso).slice(0, 3);
+
+  const openCourse = (courseId: string) => router.push({ pathname: '/course/[id]', params: { id: courseId } });
+  const confirmDeleteReminder = (reminderId: string, name: string, courseId: string) =>
+    Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteUpcoming.mutate({ courseId, reminderId }) },
+    ]);
 
   return (
     <Wrapper>
       <ScrollView
-        contentContainerStyle={contentStyle}
+        contentContainerStyle={{ paddingBottom: space.xxl + 72 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -93,26 +94,53 @@ export default function HomeScreen() {
             colors={[palette.teal]}
           />
         }>
-        <PageHeader eyebrow={todayLabel} title={`Hello, ${firstName}`} />
+        <PageHeader eyebrow={todayLabel} title={`${greeting(now)}, ${firstName}`} />
 
-        {nextClass ? (
-          <View style={heroStyle} accessible accessibilityLabel={`Next class ${nextClass.courseLabel} ${nextClass.when} at ${nextClass.startTime}`}>
-            <ThemedText type="eyebrow" color={isDark ? palette.teal : palette.tealOnDark}>
-              NEXT CLASS · {nextClass.when.toUpperCase()}
-            </ThemedText>
-            <View style={heroRowStyle}>
-              <ThemedText type="figure" color={isDark ? palette.ink : '#FFFFFF'}>
-                {formatTime12h(nextClass.startTime)}
+        {spotlight ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={`${spotlight.live ? 'Now' : 'Next class'}: ${spotlight.slot.courseLabel}, ${spotlight.status}. Opens the course.`}
+            onPress={() => openCourse(spotlight.slot.courseId)}
+            style={({ pressed }) => [
+              styles.hero,
+              { borderRadius: radius.lg, borderColor: palette.line },
+              pressed && styles.pressed,
+            ]}>
+            <LinearGradient
+              colors={[palette.tealSoft, palette.surface]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={{ padding: space.lg + 4, gap: space.xs }}>
+              <Blobs />
+              <View style={styles.heroTop}>
+                <ThemedText type="eyebrow" color={palette.teal}>
+                  {spotlight.live ? 'HAPPENING NOW' : `NEXT CLASS · ${spotlight.when.toUpperCase()}`}
+                </ThemedText>
+                <View
+                  style={[
+                    styles.pill,
+                    styles.pillOutlined,
+                    { backgroundColor: palette.surface, borderColor: palette.line },
+                  ]}>
+                  <ThemedText type="caption" color={palette.teal}>
+                    {spotlight.status}
+                  </ThemedText>
+                </View>
+              </View>
+              <View style={[styles.heroRow, { gap: space.md, marginTop: space.xs }]}>
+                <ThemedText type="figure" color={palette.ink}>
+                  {formatTime12h(spotlight.slot.startTime)}
+                </ThemedText>
+                <ThemedText type="heading" color={palette.ink} style={styles.shrink} numberOfLines={1}>
+                  {spotlight.slot.courseLabel}
+                </ThemedText>
+              </View>
+              <ThemedText type="caption" color={palette.muted}>
+                Until {formatTime12h(spotlight.slot.endTime)}
+                {spotlight.slot.room ? ` · Room ${spotlight.slot.room}` : ''}
               </ThemedText>
-              <ThemedText type="heading" color={isDark ? palette.ink : '#FFFFFF'} style={heroCourseStyle} numberOfLines={1}>
-                {nextClass.courseLabel}
-              </ThemedText>
-            </View>
-            <ThemedText type="caption" color={isDark ? palette.muted : palette.tealOnDark}>
-              Until {formatTime12h(nextClass.endTime)}
-              {nextClass.room ? ` · Room ${nextClass.room}` : ''}
-            </ThemedText>
-          </View>
+            </LinearGradient>
+          </Pressable>
         ) : (
           <EmptyState
             title="No classes in your routine"
@@ -127,22 +155,66 @@ export default function HomeScreen() {
             <SectionHeader title="Today" actionLabel="Routine" href="/routine" />
             <Card dense>
               {todaySlots.map((slot, index) => {
-                const done = parseTime(slot.endTime) <= nowMinutes;
+                const start = parseTime(slot.startTime);
+                const end = parseTime(slot.endTime);
+                const done = end <= nowMinutes;
+                const live = start <= nowMinutes && nowMinutes < end;
                 return (
                   <View key={slot.id}>
                     {index > 0 && <Divider />}
-                    <View style={[slotRowStyle, done && doneStyle]}>
-                      <ThemedText type="number" style={slotTimeStyle}>
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`${slot.courseLabel} at ${formatTime12h(slot.startTime)}${live ? ', happening now' : done ? ', finished' : ''}`}
+                      onPress={() => openCourse(slot.courseId)}
+                      style={({ pressed }) => [
+                        styles.slotRow,
+                        { gap: space.md, paddingVertical: space.md },
+                        done && styles.done,
+                        pressed && styles.pressed,
+                      ]}>
+                      <ThemedText type="number" style={[styles.slotTime, { color: palette.teal }]}>
                         {formatTime12h(slot.startTime)}
                       </ThemedText>
                       <ThemedText type="defaultSemiBold" style={styles.flex} numberOfLines={1}>
                         {slot.courseLabel}
                       </ThemedText>
-                      {slot.room ? <ThemedText type="caption">{slot.room}</ThemedText> : null}
-                    </View>
+                      {live ? (
+                        <View style={[styles.pill, { backgroundColor: palette.tealSoft }]}>
+                          <ThemedText type="caption" color={palette.teal}>
+                            Now
+                          </ThemedText>
+                        </View>
+                      ) : slot.room ? (
+                        <ThemedText type="caption">{slot.room}</ThemedText>
+                      ) : null}
+                    </Pressable>
                   </View>
                 );
               })}
+            </Card>
+          </>
+        )}
+
+        {nextDeadlines.length > 0 && (
+          <>
+            <SectionHeader title="Coming up" actionLabel="All" href="/routine" />
+            <Card dense style={styles.listCard}>
+              {nextDeadlines.map((r, index) => (
+                <View key={r.id}>
+                  {index > 0 && <Divider />}
+                  <ReminderRow
+                    name={r.name}
+                    type={r.type}
+                    date={r.date}
+                    courseCode={r.courseCode}
+                    reminderLine={buildReminderLine(r, prefs)}
+                    onPress={() =>
+                      router.push({ pathname: '/reminder/new', params: { courseId: r.courseId, reminderId: r.id } })
+                    }
+                    onDelete={() => confirmDeleteReminder(r.id, r.name, r.courseId)}
+                  />
+                </View>
+              ))}
             </Card>
           </>
         )}
@@ -156,7 +228,7 @@ export default function HomeScreen() {
             onAction={() => router.push('/course/new')}
           />
         ) : (
-          <Card dense style={listCardStyle}>
+          <Card dense style={styles.listCard}>
             {homeCourses.map((course, index) => (
               <View key={course.id}>
                 {index > 0 && <Divider />}
@@ -174,7 +246,7 @@ export default function HomeScreen() {
         {courses.length > 0 && (
           <>
             <SectionHeader title="Attendance" actionLabel="See all" href="/attendance" />
-            <Card dense style={listCardStyle}>
+            <Card dense style={styles.listCard}>
               {homeCourses.map((course, index) => (
                 <View key={course.id}>
                   {index > 0 && <Divider />}
@@ -192,26 +264,39 @@ export default function HomeScreen() {
   );
 }
 
-function findNextClass(slots: ReturnType<typeof useRoutines>['slots']) {
-  if (slots.length === 0) return null;
-  const now = new Date();
-  const today = getTodayOfWeek();
-  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+/** Re-renders once a minute, so "Now" and the countdowns stay true while the screen is open. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(timer);
+  }, []);
+  return now;
+}
 
-  for (let offset = 0; offset < 7; offset++) {
-    const dayIndex = (today + offset) % 7;
-    const match = slots
-      .filter((s) => s.dayOfWeek === dayIndex)
-      .sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime))
-      .find((s) => offset > 0 || parseTime(s.startTime) >= nowMinutes);
-    if (match) {
-      const when = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : DAY_NAMES[dayIndex];
-      return { ...match, when };
-    }
-  }
-  return null;
+function greeting(now: Date): string {
+  const hour = now.getHours();
+  if (hour < 5) return 'Hello';
+  if (hour < 12) return 'Good morning';
+  if (hour < 17) return 'Good afternoon';
+  return 'Good evening';
+}
+
+function toIsoDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 const styles = StyleSheet.create({
   flex: { flex: 1 },
+  shrink: { flexShrink: 1 },
+  hero: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
+  heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+  heroRow: { flexDirection: 'row', alignItems: 'baseline' },
+  pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  pillOutlined: { borderWidth: StyleSheet.hairlineWidth },
+  listCard: { paddingVertical: 0 },
+  slotRow: { flexDirection: 'row', alignItems: 'center' },
+  slotTime: { width: 72 },
+  done: { opacity: 0.45 },
+  pressed: { opacity: 0.85 },
 });

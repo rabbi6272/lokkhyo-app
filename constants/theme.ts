@@ -235,9 +235,10 @@ export function toNavigationTheme(theme: Theme) {
     },
     fonts: {
       regular: { fontFamily: theme.fontFamily.regular, fontWeight: 'normal' as const },
-      medium: { fontFamily: theme.fontFamily.medium, fontWeight: '500' as const },
-      bold: { fontFamily: theme.fontFamily.semibold, fontWeight: 'bold' as const },
-      heavy: { fontFamily: theme.fontFamily.displayBold, fontWeight: 'bold' as const },
+      // The family already carries the weight; a fontWeight on top makes Android fake-bold it and clip text.
+      medium: { fontFamily: theme.fontFamily.medium, fontWeight: 'normal' as const },
+      bold: { fontFamily: theme.fontFamily.semibold, fontWeight: 'normal' as const },
+      heavy: { fontFamily: theme.fontFamily.displayBold, fontWeight: 'normal' as const },
     },
   };
 }

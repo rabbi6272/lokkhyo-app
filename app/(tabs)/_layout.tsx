@@ -52,7 +52,7 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.faint,
         tabBarStyle: barStyle,
         tabBarBackground: () => (
-          <AppBlurView intensity={30} blurTarget={targetFor(route.key)} style={StyleSheet.absoluteFill} />
+          <AppBlurView intensity={40} blurTarget={targetFor(route.key)} style={StyleSheet.absoluteFill} />
         ),
         tabBarLabel: ({ focused, color, children }) => (
           <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 
+import { useAuth } from '@/providers/auth-provider';
 import {
   DEFAULT_ASSESSMENT_HOUR,
   DEFAULT_ASSESSMENT_MINUTE,
@@ -7,7 +8,7 @@ import {
   DEFAULT_EVENING_MINUTE,
   DEFAULT_MORNING_HOUR,
   DEFAULT_MORNING_MINUTE,
-  getNotificationPreferences,
+  notificationPrefsQuery,
   type NotificationPreferences,
 } from '@/lib/notificationPreferences';
 
@@ -25,22 +26,12 @@ const DEFAULT_PREFS: NotificationPreferences = {
 };
 
 /**
- * Loads notification preferences once on mount. Settings manages its own
- * state; this hook is for read-only surfaces that need to know whether
- * reminders are on and at what time.
+ * Notification preferences for read-only surfaces that need to know whether
+ * reminders are on and at what time. Shares one cached query with Settings,
+ * so mounting several screens costs one request, not one each.
  */
 export function useNotificationPreferences(): NotificationPreferences {
-  const [prefs, setPrefs] = useState<NotificationPreferences>(DEFAULT_PREFS);
-
-  useEffect(() => {
-    let cancelled = false;
-    getNotificationPreferences().then((p) => {
-      if (!cancelled) setPrefs(p);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  return prefs;
+  const { user } = useAuth();
+  const { data } = useQuery(notificationPrefsQuery(user?.uid));
+  return data ?? DEFAULT_PREFS;
 }

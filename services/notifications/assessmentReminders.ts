@@ -4,62 +4,6 @@ import {
   ensureNotificationChannels,
   setGlobalNotificationHandler,
 } from '@/services/notifications/notificationsCore';
-import { fetchCourses } from '@/services/courses/courses.hooks';
-import { fetchCourseAssessments } from '@/services/assessments/assessments.services';
-import { fetchAllReminders } from '@/services/reminders/reminders.services';
-import { getUpcomingAssessmentReminders } from '@/lib/reminders';
-import { getNotificationPreferences } from '@/lib/notificationPreferences';
-import type { Assessment, UpcomingReminder } from '@/lib/types';
-
-type ReminderSource = 'assessment' | 'upcoming';
-type ScheduledReminder = ReturnType<typeof getUpcomingAssessmentReminders>[number] & {
-  source: ReminderSource;
-};
-
-/**
- * Fetches all courses, their graded assessments, and their standalone
- * upcoming reminders, then computes which ones still have a future trigger.
- */
-export async function getUpcomingAssessmentRemindersForUser(userId: string) {
-  const courses = await fetchCourses();
-  const courseMap = new Map(courses.map((c) => [c.id, c.code]));
-
-  const [assessmentLists, reminderLists] = await Promise.all([
-    Promise.allSettled(
-      courses.map((course) =>
-        fetchCourseAssessments(course.id).then((assessments) =>
-          assessments.map((a) => ({ ...a, courseId: course.id })),
-        ),
-      ),
-    ),
-    // One request for every course's reminders; kept settled-shaped so a
-    // failure degrades to "no reminders" exactly like a failed course did.
-    Promise.allSettled([fetchAllReminders()]),
-  ]);
-
-  const allAssessments = assessmentLists
-    .filter((r): r is PromiseFulfilledResult<(Assessment & { courseId: string })[]> => r.status === 'fulfilled')
-    .flatMap((r) => r.value);
-
-  const allReminders = reminderLists
-    .filter(
-      (r): r is PromiseFulfilledResult<(UpcomingReminder & { courseId: string })[]> =>
-        r.status === 'fulfilled',
-    )
-    .flatMap((r) => r.value);
-
-  const { assessmentHour, assessmentMinute } = await getNotificationPreferences();
-  const now = new Date();
-  const fromAssessments = getUpcomingAssessmentReminders(allAssessments, now, assessmentHour, assessmentMinute);
-  const fromReminders = getUpcomingAssessmentReminders(allReminders, now, assessmentHour, assessmentMinute);
-
-  const upcoming: ScheduledReminder[] = [
-    ...fromAssessments.map((r) => ({ ...r, source: 'assessment' as const })),
-    ...fromReminders.map((r) => ({ ...r, source: 'upcoming' as const })),
-  ];
-
-  return { upcoming, courseMap };
-}
 
 /**
  * Fetches upcoming assessments from the API and schedules reminders.

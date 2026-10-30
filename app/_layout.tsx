@@ -3,9 +3,9 @@ import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar, StyleSheet } from 'react-native';
 import { BlurTargetView } from 'expo-blur';
 import { useFonts } from 'expo-font';
-import { useEffect } from 'react';
 import 'react-native-reanimated';
 
+import { AnimatedSplash } from '@/components/AnimatedSplash';
 import { modalBlurTarget } from '@/components/ui/AppBlur';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
 import { QueryProvider, useIsRestoring } from '@/providers/query-provider';
@@ -25,45 +25,44 @@ function RootNavigator() {
   const isRestoring = useIsRestoring();
 
   const [loaded] = useFonts({
-    'InterRegular': require('../assets/fonts/Inter-Regular.ttf'),
-    'InterMedium': require('../assets/fonts/Inter-Medium.ttf'),
-    'InterSemiBold': require('../assets/fonts/Inter-SemiBold.ttf'),
-    'SoraSemiBold': require('../assets/fonts/Sora-SemiBold.ttf'),
-    'SoraBold': require('../assets/fonts/Sora-Bold.ttf'),
+    InterRegular: require('../assets/fonts/Inter-Regular.ttf'),
+    InterMedium: require('../assets/fonts/Inter-Medium.ttf'),
+    InterSemiBold: require('../assets/fonts/Inter-SemiBold.ttf'),
+    SoraSemiBold: require('../assets/fonts/Sora-SemiBold.ttf'),
+    SoraBold: require('../assets/fonts/Sora-Bold.ttf'),
   });
 
-  useEffect(() => {
-    if (!initializing && loaded && !isCoursesLoading && !isRoutinesLoading && !isRestoring) {
-      SplashScreen.hideAsync();
-    }
-  }, [initializing, loaded, isCoursesLoading, isRoutinesLoading, isRestoring]);
-
-  if (initializing || !loaded || isRestoring) {
-    return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }} />;
-  }
+  const ready = !initializing && loaded && !isCoursesLoading && !isRoutinesLoading && !isRestoring;
 
   return (
-    <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }}>
-      <Stack.Protected guard={!!user}>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="course/new" options={{ headerShown: false }} />
-        <Stack.Screen name="assessment/new" options={{ headerShown: false }} />
-        <Stack.Screen name="reminder/new" options={{ headerShown: false }} />
-        <Stack.Screen name="routine/new" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/transcript" options={{ headerShown: false }} />
-        <Stack.Screen name="profile/simulator" options={{ headerShown: false }} />
-        <Stack.Screen name="semesters/index" options={{ headerShown: false }} />
-        <Stack.Screen name="semesters/[id]" options={{ headerShown: false }} />
-        <Stack.Screen name="semesters/new" options={{ headerShown: false }} />
-        <Stack.Screen name="settings/settings" options={{ headerShown: false }} />
-      </Stack.Protected>
+    <>
+      {initializing || !loaded || isRestoring ? (
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }} />
+      ) : (
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: palette.mist } }}>
+          <Stack.Protected guard={!!user}>
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="course/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="course/new" options={{ headerShown: false }} />
+            <Stack.Screen name="assessment/new" options={{ headerShown: false }} />
+            <Stack.Screen name="reminder/new" options={{ headerShown: false }} />
+            <Stack.Screen name="routine/new" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/edit" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/transcript" options={{ headerShown: false }} />
+            <Stack.Screen name="profile/simulator" options={{ headerShown: false }} />
+            <Stack.Screen name="semesters/index" options={{ headerShown: false }} />
+            <Stack.Screen name="semesters/[id]" options={{ headerShown: false }} />
+            <Stack.Screen name="semesters/new" options={{ headerShown: false }} />
+            <Stack.Screen name="settings/settings" options={{ headerShown: false }} />
+          </Stack.Protected>
 
-      <Stack.Protected guard={!user}>
-        <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      </Stack.Protected>
-    </Stack>
+          <Stack.Protected guard={!user}>
+            <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+          </Stack.Protected>
+        </Stack>
+      )}
+      <AnimatedSplash ready={ready} />
+    </>
   );
 }
 

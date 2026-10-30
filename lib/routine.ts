@@ -1,4 +1,5 @@
 import type { RoutineSlot } from '@/lib/types';
+import { DAY_NAMES } from '@/lib/constants';
 import { parseTime } from '@/lib/validate';
 
 /**
@@ -134,4 +135,40 @@ export function buildDailyRoutineNotificationContent(
     ${normalized.map((s) => `${s.courseLabel} at ${formatTime12h(s.startTime)}`).join('\n    ')}
     ${room}.`,
   };
+}
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/**
+ * The class to feature: the one in progress if any, else the next one within
+ * the coming week. `status` is the short countdown shown in the pill.
+ */
+export function findSpotlightClass(slots: RoutineSlot[], today: number, nowMinutes: number) {
+  if (slots.length === 0) return null;
+
+  const byStart = (a: RoutineSlot, b: RoutineSlot) => parseTime(a.startTime) - parseTime(b.startTime);
+  const todays = slots.filter((s) => s.dayOfWeek === today).sort(byStart);
+
+  const ongoing = todays.find((s) => parseTime(s.startTime) <= nowMinutes && nowMinutes < parseTime(s.endTime));
+  if (ongoing) {
+    return { slot: ongoing, live: true, when: 'Today', status: `Ends in ${formatDuration(parseTime(ongoing.endTime) - nowMinutes)}` };
+  }
+
+  for (let offset = 0; offset < 7; offset++) {
+    const dayIndex = (today + offset) % 7;
+    const match = (offset === 0 ? todays : slots.filter((s) => s.dayOfWeek === dayIndex).sort(byStart)).find(
+      (s) => offset > 0 || parseTime(s.startTime) >= nowMinutes,
+    );
+    if (match) {
+      const when = offset === 0 ? 'Today' : offset === 1 ? 'Tomorrow' : DAY_NAMES[dayIndex];
+      const status = offset === 0 ? `In ${formatDuration(parseTime(match.startTime) - nowMinutes)}` : when;
+      return { slot: match, live: false, when, status };
+    }
+  }
+  return null;
 }

@@ -31,7 +31,9 @@ export function FirebaseError(error: unknown): string {
     } else if (msg.includes("RATE_LIMITED")) {
         return "Too many attempts. Please wait a moment and try again.";
     } else if (msg.includes("VALIDATION_ERROR") || msg.includes("BAD_REQUEST")) {
-        return "Some details were invalid. Please check and try again.";
+        // The server names the offending field; show it so the user knows what to fix.
+        const field = (error as { details?: { fields?: { path: string; message: string }[] } }).details?.fields?.[0];
+        return field ? `${field.path}: ${field.message}` : "Some details were invalid. Please check and try again.";
     } else if (msg.includes("CONFLICT")) {
         return "That already exists.";
     } else if (msg.includes("NOT_FOUND")) {

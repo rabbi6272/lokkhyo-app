@@ -1,7 +1,7 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { BackStep } from '@/components/ui/BackStep';
 import { BlurredModal } from '@/components/ui/AppBlur';
@@ -15,7 +15,7 @@ import { useTheme, useThemeMode } from '@/providers/theme-provider';
 import { useProfile } from '@/hooks/useUserProfile';
 import { deleteAccount, signOut } from '@/services/auth/auth.services';
 import {
-  getNotificationPreferences,
+  notificationPrefsQuery,
   setAssessmentReminderTime,
   setAssessmentRemindersEnabled,
   setAttendanceDigestEnabled,
@@ -27,11 +27,8 @@ import {
 } from '@/lib/notificationPreferences';
 import { formatTime12h } from '@/lib/routine';
 import { cancelRoutineNotifications, syncRoutineNotifications } from '@/services/notifications/routineNotifications';
-import {
-  cancelAssessmentReminders,
-  getUpcomingAssessmentRemindersForUser,
-  syncAssessmentReminders,
-} from '@/services/notifications/assessmentReminders';
+import { cancelAssessmentReminders, syncAssessmentReminders } from '@/services/notifications/assessmentReminders';
+import { getUpcomingAssessmentRemindersForUser } from '@/services/notifications/upcomingReminders';
 
 /**
  * The attendance digest and its risk alerts are server pushes, and the server
@@ -135,6 +132,7 @@ export default function SettingsScreen() {
   ];
   const modalContentStyle = [styles.modalContent, { backgroundColor: palette.surface }];
 
+  const queryClient = useQueryClient();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
   const prefsLoaded = prefs !== null;
 
@@ -147,7 +145,7 @@ export default function SettingsScreen() {
 
   const { data: upcomingData, isLoading: isUpcomingLoading } = useQuery({
     queryKey: ['upcomingAssessmentReminders', user?.uid],
-    queryFn: () => getUpcomingAssessmentRemindersForUser(user!.uid),
+    queryFn: () => getUpcomingAssessmentRemindersForUser(queryClient, user!.uid),
     enabled: !!user && (prefs?.assessmentRemindersEnabled ?? false),
   });
 
@@ -160,11 +158,16 @@ export default function SettingsScreen() {
       : 'Get notified daily before CTs, quizzes & assignments';
 
   useEffect(() => {
-    getNotificationPreferences().then(setPrefs);
-  }, []);
+    queryClient.fetchQuery(notificationPrefsQuery(user?.uid)).then(setPrefs);
+  }, [queryClient, user?.uid]);
 
-  const updatePrefs = (patch: Partial<NotificationPreferences>) =>
+  // Mirror edits into the shared query so other screens see them without refetching.
+  const updatePrefs = (patch: Partial<NotificationPreferences>) => {
     setPrefs((current) => (current ? { ...current, ...patch } : current));
+    queryClient.setQueryData<NotificationPreferences>(notificationPrefsQuery(user?.uid).queryKey, (current) =>
+      current ? { ...current, ...patch } : current,
+    );
+  };
 
   const handleToggleDailyRoutine = async (value: boolean) => {
     updatePrefs({ dailyRoutineEnabled: value });
