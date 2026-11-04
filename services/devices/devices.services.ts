@@ -36,8 +36,9 @@ export function isFetchingDevicePushToken(): boolean {
 /**
  * Register this device for server push (Expo Push Service, Android + iOS).
  *
- * Obtains an Expo push token (`ExponentPushToken[...]`), with native FCM
- * fallback on Android.
+ * Obtains an Expo push token (`ExponentPushToken[...]`). On Android it also sends
+ * the native FCM token, which is the fallback transport and lets the server remove
+ * this phone's old FCM-only row so it is not pushed twice.
  *
  * Debounced & deduplicated:
  * 1. Shares an in-flight promise across concurrent callers.
@@ -98,9 +99,9 @@ export async function registerThisDevice(token?: string, force = false): Promise
       console.warn('[devices] Failed to get Expo push token:', err);
     }
 
-    // Only query native FCM if Expo push token is unavailable or caller supplied one
-    let fcmToken: string | undefined = token;
-    if (!expoPushToken && !fcmToken && Platform.OS === 'android') {
+    // On iOS a native token is an APNs token, which is useless as an FCM token.
+    let fcmToken: string | undefined = Platform.OS === 'android' ? token : undefined;
+    if (!fcmToken && Platform.OS === 'android') {
       try {
         isInternalDeviceTokenFetch = true;
         const fcmData = await Notifications.getDevicePushTokenAsync();

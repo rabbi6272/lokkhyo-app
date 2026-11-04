@@ -22,6 +22,7 @@ import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useRoutines } from '@/hooks/useRoutines';
 import { useDeleteUpcomingReminder } from '@/hooks/useUpcomingReminders';
 import { useProfile } from '@/hooks/useUserProfile';
+import { useWidgetSync } from '@/hooks/useWidgetSync';
 import { DAY_NAMES, MONTH_NAMES } from '@/lib/constants';
 import { buildReminderLine } from '@/lib/reminders';
 import { findSpotlightClass, formatTime12h, getTodayOfWeek } from '@/lib/routine';
@@ -47,7 +48,8 @@ export default function HomeScreen() {
   // Home screen presents at most 3 courses. Only query details for those 3 to
   // avoid massive parallel network fan-out on cold start.
   const homeCourses = useMemo(() => courses.slice(0, 3), [courses]);
-  const { courseAttendance } = useAllCoursesAttendance(homeCourses);
+  const { courseAttendance, isLoading: isAttendanceLoading } = useAllCoursesAttendance(homeCourses);
+  useWidgetSync(courseAttendance, reminders, isAttendanceLoading);
 
   const progressQueries = useQueries({
     queries: homeCourses.map((course) => courseAssessmentsQuery(user?.uid, course.id)),

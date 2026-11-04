@@ -8,7 +8,10 @@ import 'react-native-reanimated';
 import { AnimatedSplash } from '@/components/AnimatedSplash';
 import { modalBlurTarget } from '@/components/ui/AppBlur';
 import { AuthProvider, useAuth } from '@/providers/auth-provider';
-import { QueryProvider, useIsRestoring } from '@/providers/query-provider';
+import { useIsRestoring } from '@tanstack/react-query';
+
+import { initSentry, wrapRoot } from '@/lib/sentry';
+import { QueryProvider } from '@/providers/query-provider';
 import { ThemeProvider, useTheme } from '@/providers/theme-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useRoutines } from '@/hooks/useRoutines';
@@ -84,10 +87,14 @@ function AppWithTheme() {
   );
 }
 
-export default function RootLayout() {
+function RootLayout() {
   return (
     <ThemeProvider>
       <AppWithTheme />
     </ThemeProvider>
   );
 }
+
+initSentry();
+
+export default wrapRoot(RootLayout);

@@ -239,8 +239,8 @@ export default function SettingsScreen() {
     if (target === 'assessment') await setAssessmentReminderTime(hour, minute);
 
     if (!user) return;
-    // The morning time drives the iOS local weekly schedule; Android gets the
-    // morning summary as a server push, so this is a no-op there.
+    // These times are read by the server's dispatcher; the sync only clears any
+    // local schedules left by an older build.
     if (target === 'morning') await syncRoutineNotifications(user.uid);
     if (target === 'assessment' && prefs?.assessmentRemindersEnabled) {
       await syncAssessmentReminders(user.uid);

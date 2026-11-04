@@ -1,22 +1,20 @@
-import { QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
+import { MutationCache, QueryCache, QueryClient, focusManager, onlineManager } from '@tanstack/react-query';
 import { PersistQueryClientProvider } from '@tanstack/react-query-persist-client';
 import { createAsyncStoragePersister } from '@tanstack/query-async-storage-persister';
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import { AppState, type AppStateStatus } from 'react-native';
 
+import { reportUnexpected } from '@/lib/sentry';
+
 const STORAGE_KEY = 'lokkhyo-query-cache';
 const MAX_AGE = 24 * 60 * 60 * 1000; // 24 hours
 
-interface RestoreContextValue {
-  isRestoring: boolean;
-}
-
-const RestoreContext = createContext<RestoreContextValue>({ isRestoring: true });
-
 function createQueryClient() {
   return new QueryClient({
+    queryCache: new QueryCache({ onError: reportUnexpected }),
+    mutationCache: new MutationCache({ onError: reportUnexpected }),
     defaultOptions: {
       queries: {
         staleTime: 5 * 60 * 1000, // 5 minutes fresh window
@@ -25,6 +23,9 @@ function createQueryClient() {
         refetchOnWindowFocus: false, // Prevents request storms on AppState foreground / cold start in React Native
         refetchOnReconnect: false, // Prevents cold-start burst when NetInfo listener connects
       },
+      // Offline writes are not queued in v1. Attempt the request so it fails at once
+      // with "reconnect" instead of pausing with the form spinning indefinitely.
+      mutations: { networkMode: 'always' },
     },
   });
 }
@@ -37,7 +38,6 @@ export const asyncStoragePersister = createAsyncStoragePersister({
 
 export function QueryProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(createQueryClient);
-  const [isRestoring, setIsRestoring] = useState(true);
 
   // Online/offline connectivity handling via NetInfo
   useEffect(() => {
@@ -69,18 +69,8 @@ export function QueryProvider({ children }: { children: ReactNode }) {
   );
 
   return (
-    <PersistQueryClientProvider
-      client={queryClient}
-      persistOptions={persistOptions}
-      onSuccess={() => setIsRestoring(false)}
-    >
-      <RestoreContext.Provider value={{ isRestoring }}>
-        {children}
-      </RestoreContext.Provider>
+    <PersistQueryClientProvider client={queryClient} persistOptions={persistOptions}>
+      {children}
     </PersistQueryClientProvider>
   );
-}
-
-export function useIsRestoring(): boolean {
-  return useContext(RestoreContext).isRestoring;
 }

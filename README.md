@@ -1,10 +1,10 @@
 # Lokkhyo — Academic Progress Tracker
 
-A mobile academic tracker for university students. Track **continuous assessment (CT) marks**, a **weekly class routine**, **attendance per class**, **upcoming CTs/quizzes** with local reminders, and your **official GPA/CGPA and transcript**.
+A mobile academic tracker for university students. Track **continuous assessment (CT) marks**, a **weekly class routine**, **attendance per class**, **upcoming CTs/quizzes** with push reminders, and your **official GPA/CGPA and transcript**.
 
-Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo-router v6** and **TanStack Query v5**. Identity is **Firebase Auth** (`@react-native-firebase/auth`, email/password and Google). All data lives on the **Lokkhyo API** (`../lokkhyo-server`, Next.js + MongoDB). The app no longer uses Firestore.
+Built with **Expo SDK 55** (React Native 0.83, React 19.2), **TypeScript**, **expo-router v55** and **TanStack Query v5**. Identity is **Firebase Auth** (`@react-native-firebase/auth`, email/password and Google). All data lives on the **Lokkhyo API** (`../lokkhyo-server`, Hono on Bun + MongoDB). The app no longer uses Firestore.
 
-> Planning the move to Hono/Bun, Expo Push, offline reads, dark mode, and widgets? See [`../TRANSITION.md`](../TRANSITION.md).
+> Status of the move to Hono/Bun, Expo Push, offline reads, dark mode, and widgets: see [`../TRANSITION.md`](../TRANSITION.md).
 
 ---
 
@@ -16,25 +16,26 @@ Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo
 | **Courses** | Course cards with live CT progress; tap through to a course detail screen |
 | **Attendance** | Unified calendar of every class session; mark present / absent / cancelled |
 | **Routine** | Weekly class grid (Sat–Fri) with times and rooms; **Upcoming** section for CT/quiz/assignment/labFinal reminders |
+| **Home-screen widgets (Android)** | CGPA, attendance for your first three courses, and your next reminder. Each shows when it last synced and opens the matching screen |
 | **Profile** | Profile and server CGPA, **Transcript & degree status**, change/profile photo, settings, sign out |
 
 On a course's detail screen you can:
 - add and delete assessments (CT, quiz, assignment, lab), each with marks, weights and dates;
 - see the client-side **CT progress** toward the course total;
-- list **upcoming reminders**: mark-less events that schedule a local notification a few days before the date;
+- list **upcoming reminders**: mark-less events that send a daily push from a few days before the date;
 - record the course's **final grade**. The server grades it on the RUET scale and recomputes your GPA/CGPA.
 
 ---
 
 ## Tech stack
 
-- **Expo SDK 54**, development build (native `@react-native-firebase` modules, so not Expo Go)
-- **expo-router v6** — file-based routing with typed routes and protected routes
-- **React 19** + **TypeScript** (strict)
+- **Expo SDK 55**, development build (native `@react-native-firebase` modules, so not Expo Go)
+- **expo-router v55** — file-based routing with typed routes and protected routes
+- **React 19.2** + **TypeScript** (strict)
 - **Firebase Auth** (`@react-native-firebase/auth`), plus Google Sign-In. Identity only.
 - **Lokkhyo REST API** for all data. It is called with React Native `fetch` through one wrapper (no axios).
 - **TanStack Query v5** for server-state caching, queries, mutations and invalidation
-- **expo-notifications** for local reminder scheduling
+- **expo-notifications** for Expo Push registration and notification handling
 - **AsyncStorage** for the offline cache of notification preferences
 - Inline form validation, with no form or validation libraries
 
@@ -66,7 +67,7 @@ lib/api/                               feature-agnostic HTTP plumbing
    └─ error.ts        ApiError { code, status, details }
 ```
 
-The feature modules are `auth`, `profile`, `semesters`, `courses`, `routine`, `attendance`, `assessments`, `reminders` (server `deadlines`), `grades` (GPA engine and results), `notification-prefs`, and `devices` (FCM registration after sign-in, unregistered on sign-out/delete).
+The feature modules are `auth`, `profile`, `semesters`, `courses`, `routine`, `attendance`, `assessments`, `reminders` (server `deadlines`), `grades` (GPA engine and results), `notification-prefs`, and `devices` (push registration after sign-in, unregistered on sign-out/delete).
 
 **Mappers own every mismatch between the app and the server.**
 - Day of week: the app's 0=Saturday…6=Friday ⇄ `"SATURDAY"`.
@@ -111,7 +112,7 @@ hooks/                      Screen-facing adapters over the feature modules
 lib/                        Pure logic + lib/api plumbing
 providers/                  AuthProvider (session + cache clearing), QueryProvider
 services/<feature>/         Feature modules (see Architecture)
-services/notifications/     Local notification scheduling (routine + reminders)
+services/notifications/     Channels and handlers; clears local schedules left by older builds
 ```
 
 ---
@@ -145,19 +146,23 @@ The server is the source of truth. See [`../lokkhyo-server/SERVER.md`](../lokkhy
 
 ---
 
+## Home-screen widgets
+
+Android only. After Home loads, the app writes a small snapshot to AsyncStorage (`lib/widgetSnapshot.ts`, `hooks/useWidgetSync.ts`). Widgets (`widgets/`) only read that snapshot and never call the network, so they show what Home last showed, including offline. Signing out clears it. Android also redraws them every 6 hours so "Tomorrow" stays true. Adding or renaming a widget means updating `app.json` and rebuilding the native app.
+
 ## Upcoming reminders & notifications
 
 - **Separate from marks.** Reminders carry only `type`, `name` and `date`, never marks, so an upcoming test cannot affect progress.
 - **Turning one into a mark.** Once the event has happened, **Record marks** turns it into an assessment; the reminder is deleted.
-- **Lead time** (`lib/reminders.ts`): `ct`/`assignment` 2 days, `quiz` 3 days, `labFinal` 5 days. Notifications fire at the reminder time set in **Settings** (default 07:00).
-- **Delivery is local.** Notifications are scheduled with `expo-notifications`; the server does not send push notifications yet.
-- **Preferences** are stored on the server. Toggles write to AsyncStorage first, so scheduling works offline.
+- **Lead time** (`lib/reminders.ts`): `ct`/`assignment` 2 days, `quiz` 3 days, `labFinal` 5 days. A reminder repeats daily from that lead through the event day, at the reminder time set in **Settings** (default 07:00). The same applies to dated assessments.
+- **Delivery is server push.** The dispatcher in `lokkhyo-server/services/dispatch.ts` sends them; `REMINDER_LEAD_DAYS` here must match `ASSESSMENT_REMINDER_LEAD_DAYS` in its `lib/digest.ts`.
+- **Preferences** are stored on the server, which is what the dispatcher reads. Toggles also write to AsyncStorage, so Settings still shows them offline.
 
 ---
 
 ## Getting started
 
-1. **Run the API.** In `../lokkhyo-server`, run `yarn && npx next dev`. See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for its `.env`.
+1. **Run the API.** In `../lokkhyo-server`, run `bun install && bun run dev` (the server uses Bun; this app uses yarn). See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for its `.env`.
 2. **Use one Firebase project.** The app's `google-services.json` and the server's `FIREBASE_SERVICE_ACCOUNT` must belong to the **same Firebase project**. Otherwise the ID tokens won't verify.
 3. **Create `.env`:**
 
@@ -168,6 +173,8 @@ The server is the source of truth. See [`../lokkhyo-server/SERVER.md`](../lokkhy
    EXPO_PUBLIC_API_URL=...
    # Optional. Request/response logging; on by default in development.
    EXPO_PUBLIC_API_LOG=...
+   # Optional. Crash reporting in release builds; off when unset.
+   EXPO_PUBLIC_SENTRY_DSN=...
    ```
 
 4. **Install and run.** This is a development build, because the app uses native Firebase modules:
@@ -191,7 +198,7 @@ cd android
 
 - Output: `android/app/build/outputs/apk/release/app-release.apk`.
 - `-PreactNativeArchitectures=arm64-v8a` restricts the APK to 64-bit ARM only (the default in `android/gradle.properties` builds all four ABIs). Pass it on the command line — `npx expo prebuild` regenerates `gradle.properties` and would drop an edit made there.
-- **Signing is debug for now.** `android/app/build.gradle` signs `release` with `signingConfigs.debug` because `android/app/release.jks` does not exist. That is fine for internal/testing installs, but **not** for Play Store uploads — create a real release keystore before shipping.
+- **Signing is debug for now**, because no release keystore is set up. That is fine for internal/testing installs, but **not** for Play Store uploads. See [`LocalBuild.md`](./LocalBuild.md), including why the keystore in old git history must not be reused.
 - No prebuild is needed for the app's native modules here; `expo-image-picker`'s own manifest already merges in the `CAMERA`/media permissions.
 
 ### With EAS
@@ -202,7 +209,7 @@ The `eas.json` `production` profile builds an APK (`buildType: "apk"`, `:app:ass
 
 | Command | Purpose |
 | --- | --- |
-| `yarn start` | Start the Expo dev server |
+| `yarn dev` | Start the Expo dev server with a clean cache |
 | `yarn android` / `yarn ios` | Run on a device or emulator |
 | `yarn check:errors` | Type-check + lint (the pre-commit gate) |
 | `yarn build:apk` | Prebuild + local EAS release APK (Android) |

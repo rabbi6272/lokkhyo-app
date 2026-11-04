@@ -59,6 +59,7 @@ android/local.properties
 *.keystore
 android/app/*.jks
 android/app/*.keystore
+credentials.json
 
 # Lock files — yarn.lock is committed so CI can install with --frozen-lockfile
 package-lock.json

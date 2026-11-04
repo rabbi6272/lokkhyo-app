@@ -5,6 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { auth } from '@/lib/firebase';
 import type { AuthContextValue, User } from '@/services/auth/auth.types';
+import { clearWidgetSnapshot } from '@/services/widgets/widgets.services';
 import { useProfileQuery } from '@/services/profile/profile.hooks';
 
 const AuthContext = createContext<AuthContextValue>({ user: null, initializing: true });
@@ -43,6 +44,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     previousUid.current = uid;
   }, [uid, queryClient]);
+
+  // Also covers a session that ended while the app was closed.
+  useEffect(() => {
+    if (!initializing && !uid) void clearWidgetSnapshot().catch(() => undefined);
+  }, [initializing, uid]);
 
   /**
    * Provision the server-side profile once a Firebase session exists.

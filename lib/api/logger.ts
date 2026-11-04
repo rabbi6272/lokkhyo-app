@@ -4,8 +4,8 @@ import type { ApiError } from '@/lib/api/error';
 /**
  * Console tracing for every call the app makes to the backend.
  *
- * One line when a request goes out, one when the response comes back (status +
- * duration + body), and one on failure. Nothing secret is logged: the
+ * One line per request: when the response comes back (status + duration), or
+ * when it fails. Nothing secret is logged: the
  * `Authorization` header is never included, and the request body is the JSON
  * the caller passed in.
  *
@@ -13,14 +13,6 @@ import type { ApiError } from '@/lib/api/error';
  * production build unless explicitly enabled.
  */
 const PREFIX = '[api]';
-
-export function logRequest(method: string, url: string, body?: unknown) {
-  if (!API_LOGGING) return;
-  console.log(`${PREFIX} → ${method} ${url}`);
-  // if (body !== undefined) {
-  //   console.log(`${PREFIX}   body`, body);
-  // }
-}
 
 export function logResponse(
   method: string,

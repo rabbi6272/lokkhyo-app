@@ -1,7 +1,7 @@
 import { getIdToken } from '@/lib/api/auth-token';
 import { API_TIMEOUT_MS, apiUrl } from '@/lib/api/config';
 import { ApiError, toApiError } from '@/lib/api/error';
-import { logError, logRequest, logResponse, logRetry } from '@/lib/api/logger';
+import { logError, logResponse, logRetry } from '@/lib/api/logger';
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
@@ -116,8 +116,6 @@ export async function request<T>(options: RequestOptions): Promise<T> {
       }
     }
 
-    logRequest(method, url, options.body);
-
     let response = await send(options, token, controller.signal);
 
     // An expired token is the one failure worth retrying automatically: ask
@@ -143,7 +141,7 @@ export async function request<T>(options: RequestOptions): Promise<T> {
         ? error
         : error instanceof Error && error.name === 'AbortError'
           ? new ApiError('TIMEOUT', 'The server took too long to respond')
-          : new ApiError('NETWORK_ERROR', 'Could not reach the server');
+          : new ApiError('NETWORK_ERROR', 'Could not reach the server. Reconnect and try again.');
 
     logError(method, url, apiError, Date.now() - startedAt);
     throw apiError;

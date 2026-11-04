@@ -37,6 +37,10 @@ installs, but Play Store uploads **reject** debug-signed artifacts, and a
 keystore change later invalidates updates for every installed copy. Generate the
 real keystore before the first public install, not after.
 
+> **Never reuse `android/app/release.keystore` from this repo's git history.** It
+> was committed along with its passwords (commits `43ac3d1`, removed in `dd1b82d`)
+> and the repository is public, so anyone can sign as that key.
+
 ### 1. Generate the keystore (once, outside the repo)
 
 Requires a JDK (`keytool` ships with it):
@@ -58,8 +62,9 @@ this repository.
 ### 2. Store the credentials
 
 - Keystore file: a private location such as `~/keystores/lokkhyo-release.jks`
-  (the app's `.gitignore` already excludes `*.jks`, `*.keystore`,
-  `credentials.json`, and `google-services.json`).
+  (the app's `.gitignore` excludes `*.jks`, `*.keystore` and `credentials.json`).
+  `google-services.json` stays tracked: EAS builds need it, and it holds only
+  client configuration, not a private key.
 - Passwords: a password manager, or CI secrets. Never commit them, and never
   put them in `gradle.properties` if that file is tracked.
 
@@ -123,6 +128,18 @@ $ANDROID_HOME/build-tools/<version>/apksigner verify --print-certs \
 ```
 
 The certificate must be yours, not the debug one.
+
+---
+
+## iOS prerequisites
+
+iOS cannot build until both of these are done:
+
+1. Download `GoogleService-Info.plist` from the Firebase console into the app root
+   and add `"googleServicesFile": "./GoogleService-Info.plist"` under `ios` in
+   `app.json`. `@react-native-firebase/app` requires it.
+2. Run `npx eas credentials` for iOS so Expo Push has an APNs key. Android likewise
+   needs an FCM V1 service account key uploaded there.
 
 ---
 
