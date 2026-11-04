@@ -1,14 +1,15 @@
-import type { Timestamp } from '@react-native-firebase/firestore';
-
 export type SemesterStatus = 'active' | 'archived';
 
 export interface UserProfile {
   fullName: string;
+  /** Google's avatar when signed in with Google, else null. */
+  photoUrl: string | null;
   university: string;
   department: string;
   currentSemesterId: string;
   targetCgpa: number;
-  createdAt: Timestamp | null;
+  /** ISO-8601, or null before the profile has been read from the API. */
+  createdAt: string | null;
 }
 
 export interface Semester {
@@ -18,7 +19,8 @@ export interface Semester {
   targetGpa: number;
   startDate: string;
   totalWeeks: number;
-  createdAt: Timestamp | null;
+  /** ISO-8601 from the API. */
+  createdAt: string | null;
 }
 
 export interface Course {
@@ -31,7 +33,8 @@ export interface Course {
   ctWeight: number;
   isLab: boolean;
   courseTeachers?: string[];
-  createdAt: Timestamp | null;
+  /** ISO-8601 from the API. */
+  createdAt: string | null;
 }
 
 export type AssessmentType = 'ct' | 'quiz' | 'assignment' | 'labFinal';
@@ -45,7 +48,8 @@ export interface Assessment {
   weight: number;
   date: string;
   teacherName?: string;
-  createdAt: Timestamp | null;
+  /** ISO-8601 from the API. */
+  createdAt: string | null;
 }
 
 export interface UpcomingReminder {
@@ -53,7 +57,8 @@ export interface UpcomingReminder {
   type: AssessmentType;
   name: string;
   date: string;
-  createdAt: Timestamp | null;
+  /** ISO-8601 from the API. */
+  createdAt: string | null;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'cancelled';
@@ -63,7 +68,8 @@ export interface AttendanceRecord {
   date: string;
   slotId: string;
   status: AttendanceStatus;
-  createdAt: Timestamp | null;
+  /** ISO-8601 from the API. */
+  createdAt: string | null;
 }
 
 export interface RoutineSlot {
@@ -74,18 +80,6 @@ export interface RoutineSlot {
   startTime: string;
   endTime: string;
   room: string;
-  createdAt: Timestamp | null;
-}
-
-export type TargetType = 'gpa' | 'cgpa' | 'attendance' | 'custom';
-
-export interface AcademicTarget {
-  id: string;
-  type: TargetType;
-  title: string;
-  targetValue: number;
-  currentValue: number;
-  unit: string;
-  targetDate: string;
-  createdAt: Timestamp | null;
+  /** Not carried by the API; kept for the shape the screens were written against. */
+  createdAt: string | null;
 }

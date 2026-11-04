@@ -1,35 +1,57 @@
 import { ActivityIndicator, Pressable, StyleSheet, Text, type ViewStyle } from 'react-native';
+import { useTheme } from '@/providers/theme-provider';
+
+type Variant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 
 type ButtonProps = {
   title: string;
   onPress: () => void;
   loading?: boolean;
   disabled?: boolean;
-  variant?: 'primary' | 'ghost' | 'destructive';
+  variant?: Variant;
   style?: ViewStyle;
 };
 
 export function Button({ title, onPress, loading, disabled, variant = 'primary', style }: ButtonProps) {
+  const { palette } = useTheme();
   const isDisabled = disabled || loading;
 
+  const FILL: Record<Variant, string> = {
+    primary: palette.teal,
+    secondary: palette.tealSoft,
+    ghost: 'transparent',
+    destructive: palette.risk,
+  };
+
+  const LABEL: Record<Variant, string> = {
+    primary: palette.onTeal,
+    secondary: palette.teal,
+    ghost: palette.teal,
+    destructive: '#FFFFFF',
+  };
+
+  /**
+   * Primary is the one main action on a screen; secondary sits beside it;
+   * ghost is an inline text action ("Add", "See all"); destructive deletes.
+   */
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
       onPress={onPress}
       disabled={isDisabled}
+      hitSlop={variant === 'ghost' ? 10 : undefined}
       style={({ pressed }) => [
-        styles.base,
-        variant === 'primary' ? styles.primary : variant === 'destructive' ? styles.destructive : styles.ghost,
-        pressed && !isDisabled && styles.pressed,
+        variant === 'ghost' ? styles.ghost : styles.base,
+        { backgroundColor: FILL[variant] },
+        pressed && !isDisabled && (variant === 'ghost' ? styles.ghostPressed : styles.pressed),
         isDisabled && styles.disabled,
         style,
       ]}>
       {loading ? (
-        <ActivityIndicator color={variant === 'primary' ? '#fff' : '#000'} />
+        <ActivityIndicator color={LABEL[variant]} />
       ) : (
-        <Text style={[styles.label, variant === 'primary' ? styles.primaryLabel : variant === 'destructive' ? styles.destructiveLabel : styles.ghostLabel]}>
-          {title}
-        </Text>
+        <Text style={[styles.label, { color: LABEL[variant] }]}>{title}</Text>
       )}
     </Pressable>
   );
@@ -37,42 +59,19 @@ export function Button({ title, onPress, loading, disabled, variant = 'primary',
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 50,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    minHeight: 48,
+    borderRadius: 999,
+    paddingHorizontal: 22,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  primary: {
-    backgroundColor: '#000',
-  },
-  destructive: {
-    backgroundColor: '#dc2626',
   },
   ghost: {
-    paddingVertical: 0,
-    paddingHorizontal: 0,
+    paddingVertical: 4,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'transparent',
   },
-  pressed: {
-    opacity: 0.8,
-  },
-  disabled: {
-    opacity: 0.5,
-  },
-  label: {
-    fontFamily: 'InterSemiBold',
-    fontSize: 14,
-  },
-  primaryLabel: {
-    color: '#fff',
-  },
-  ghostLabel: {
-    color: '#000',
-  },
-  destructiveLabel: {
-    color: '#fff',
-  },
+  pressed: { transform: [{ scale: 0.98 }], opacity: 0.92 },
+  ghostPressed: { opacity: 0.6 },
+  disabled: { opacity: 0.45 },
+  label: { fontFamily: 'InterSemiBold', fontSize: 15 },
 });

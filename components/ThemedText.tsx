@@ -1,26 +1,35 @@
-import { StyleSheet, Text, type TextProps } from 'react-native';
-
+import { Text, type TextProps, type TextStyle } from 'react-native';
+import { useTheme } from '@/providers/theme-provider';
+import { typeScale, type Palette } from '@/constants/theme';
 
 export type ThemedTextProps = TextProps & {
   color?: string;
-  type?: 'default' | 'title' | 'normalTitle' | 'defaultSemiBold' | 'subtitle' | 'link';
+  type?:
+    | 'default'
+    | 'defaultSemiBold'
+    | 'title'
+    | 'normalTitle'
+    | 'subtitle'
+    | 'link'
+    | 'heading'
+    | 'caption'
+    | 'eyebrow'
+    | 'figure'
+    | 'number';
 };
 
-export function ThemedText({
-  style,
-  color,
-  type = 'default',
-  ...rest
-}: ThemedTextProps) {
+/**
+ * All app text. Types map onto the type scale in `constants/theme`; the older
+ * names (`subtitle`, `defaultSemiBold`, …) are kept so existing screens follow.
+ */
+export function ThemedText({ style, color, type = 'default', ...rest }: ThemedTextProps) {
+  const { palette, fontFamily } = useTheme();
   return (
     <Text
       style={[
-        { color },
-        type === 'default' ? styles.default : undefined,
-        type === 'defaultSemiBold' ? styles.defaultSemiBold : undefined,
-        type === 'title' ? styles.title : undefined,
-        type === 'subtitle' ? styles.subtitle : undefined,
-        type === 'link' ? styles.link : undefined,
+        baseStyle(palette),
+        textStyles[type]?.(palette, fontFamily),
+        color ? { color } : undefined,
         style,
       ]}
       {...rest}
@@ -28,30 +37,22 @@ export function ThemedText({
   );
 }
 
-const styles = StyleSheet.create({
-  default: {
-    fontFamily: 'InterRegular',
+const baseStyle = (palette: Palette): TextStyle => ({ color: palette.ink });
+
+const textStyles: Record<string, (palette: Palette, fontFamily: any) => TextStyle> = {
+  default: () => ({ ...typeScale.body }),
+  defaultSemiBold: () => ({ ...typeScale.bodyStrong }),
+  title: () => ({ ...typeScale.title }),
+  normalTitle: () => ({ ...typeScale.title }),
+  subtitle: () => ({ ...typeScale.heading }),
+  heading: () => ({ ...typeScale.heading }),
+  caption: (palette: Palette) => ({ ...typeScale.caption, color: palette.muted }),
+  eyebrow: (palette: Palette) => ({ ...typeScale.eyebrow, color: palette.muted }),
+  figure: () => ({ ...typeScale.figure }),
+  number: () => ({ ...typeScale.number }),
+  link: (palette: Palette, fontFamily: any) => ({
+    fontFamily: fontFamily.semibold,
     fontSize: 14,
-    lineHeight: 20,
-  },
-  defaultSemiBold: {
-    fontFamily: 'InterSemiBold',
-    fontSize: 15,
-    lineHeight: 20,
-  },
-  title: {
-    fontFamily: 'InterSemiBold',
-    fontSize: 28,
-    lineHeight: 30,
-  },
-  subtitle: {
-    fontFamily: 'InterSemiBold',
-    fontSize: 16,
-  },
-  link: {
-    fontFamily: 'LatoRegular',
-    lineHeight: 20,
-    fontSize: 16,
-    color: '#0a7ea4',
-  },
-});
+    color: palette.teal,
+  }),
+};

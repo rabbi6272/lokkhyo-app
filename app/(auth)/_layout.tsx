@@ -4,7 +4,7 @@ import { StatusBar } from 'react-native';
 export default function AuthLayout() {
   return (
     <>
-      <StatusBar barStyle={'dark-content'} />
+      <StatusBar barStyle={'light-content'} backgroundColor="transparent" translucent />
       <Stack screenOptions={{ headerShown: false }} />
     </>
   );

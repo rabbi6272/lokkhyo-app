@@ -2,7 +2,8 @@
   "expo": {
     "name": "Lokkhyo",
     "slug": "lokkhyo",
-    "version": "1.0.0",
+    "version": "1.2.0",
+    "runtimeVersion": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "lokkhyo",
@@ -41,7 +42,65 @@
         }
       ],
       "@react-native-firebase/app",
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow Lokkhyo to access your photos so you can set a profile picture.",
+          "cameraPermission": "Allow Lokkhyo to use your camera to take a profile picture."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "buildArchs": [
+              "arm64-v8a"
+            ]
+          }
+        }
+      ],
+      "expo-font",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "Cgpa",
+              "label": "CGPA",
+              "description": "Your cumulative GPA",
+              "minWidth": "110dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 2,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 21600000
+            },
+            {
+              "name": "Attendance",
+              "label": "Attendance",
+              "description": "Attendance for your first three courses",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 21600000
+            },
+            {
+              "name": "Deadline",
+              "label": "Next up",
+              "description": "Your next reminder",
+              "minWidth": "250dp",
+              "minHeight": "110dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 2,
+              "resizeMode": "horizontal|vertical",
+              "updatePeriodMillis": 21600000
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

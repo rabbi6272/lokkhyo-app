@@ -7,11 +7,21 @@ export const ROUTINE_CHANNEL_NAME = 'Daily Routine';
 export const ASSESSMENT_CHANNEL_ID = 'assessment-reminders';
 export const ASSESSMENT_CHANNEL_NAME = 'Assessment Reminders';
 
+/**
+ * Channel for notifications the *server* sends over FCM (evening attendance
+ * digest, attendance-risk alerts). The id must match `SERVER_PUSH_CHANNEL` in
+ * `lokkhyo-server/services/push.ts`.
+ */
+export const SERVER_PUSH_CHANNEL_ID = 'server-alerts';
+export const SERVER_PUSH_CHANNEL_NAME = 'Attendance Alerts';
+
 export const ROUTINE_NOTIFICATION_PREFIX = 'lokkhyo-routine.';
 export const ASSESSMENT_NOTIFICATION_PREFIX = 'lokkhyo-assessment.';
 
 export const NOTIFICATION_TYPE_DAILY_ROUTINE = 'daily-routine';
 export const NOTIFICATION_TYPE_ASSESSMENT_REMINDER = 'assessment-reminder';
+/** `data.type` of a server-sent push; `data.link` is the route to open. */
+export const NOTIFICATION_TYPE_SERVER_PUSH = 'server-push';
 
 let handlerInitialized = false;
 let channelsEnsured = false;
@@ -60,6 +70,15 @@ export async function ensureNotificationChannels(): Promise<void> {
       await Notifications.setNotificationChannelAsync(ASSESSMENT_CHANNEL_ID, {
         name: ASSESSMENT_CHANNEL_NAME,
         importance: Notifications.AndroidImportance.DEFAULT,
+        vibrationPattern: [0, 250],
+      });
+    }
+
+    const serverChannel = await Notifications.getNotificationChannelAsync(SERVER_PUSH_CHANNEL_ID);
+    if (!serverChannel) {
+      await Notifications.setNotificationChannelAsync(SERVER_PUSH_CHANNEL_ID, {
+        name: SERVER_PUSH_CHANNEL_NAME,
+        importance: Notifications.AndroidImportance.HIGH,
         vibrationPattern: [0, 250],
       });
     }

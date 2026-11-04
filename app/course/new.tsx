@@ -1,5 +1,6 @@
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useTheme } from '@/providers/theme-provider';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -11,22 +12,32 @@ import { useSemesters } from '@/hooks/useSemesters';
 import { isNumeric, required } from '@/lib/validate';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { BackStep } from '@/components/ui/BackStep';
+import { FirebaseError } from '@/services/FirebaseError';
 
 export default function NewCourseScreen() {
   const router = useRouter();
+  /** Opening from a semester's page means that term, not the first in the list. */
+  const { semesterId: semesterParam } = useLocalSearchParams<{ semesterId?: string }>();
   const { createCourse } = useCourses();
   const { semesters } = useSemesters();
+  const { palette } = useTheme();
 
-  const [semesterId, setSemesterId] = useState(semesters[0]?.id ?? '');
+  const [semesterId, setSemesterId] = useState(semesterParam ?? '');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [credits, setCredits] = useState('');
   const [passMarks, setPassMarks] = useState('');
   const [ctWeight, setCtWeight] = useState('');
   const [teacherInput, setTeacherInput] = useState('');
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [teachers, setTeachers] = useState<string[]>([]);
   const [isLab, setIsLab] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+
+  // The term list arrives after mount, so fall back to the first one once it does.
+  useEffect(() => {
+    if (!semesterId && semesters[0]) setSemesterId(semesters[0].id);
+  }, [semesterId, semesters]);
 
   const handleAddTeacher = () => {
     const name = teacherInput.trim();
@@ -54,24 +65,29 @@ export default function NewCourseScreen() {
     setErrors(nextErrors);
     if (Object.values(nextErrors).some(Boolean)) return;
 
-    await createCourse.mutateAsync({
-      semesterId,
-      code: code.trim(),
-      title: title.trim(),
-      credits: Number(credits),
-      passMarks: Number(passMarks),
-      ctWeight: Number(ctWeight),
-      isLab,
-      courseTeachers: teachers,
-    });
-    router.back();
+    setSubmitError(null);
+    try {
+      await createCourse.mutateAsync({
+        semesterId,
+        code: code.trim(),
+        title: title.trim(),
+        credits: Number(credits),
+        passMarks: Number(passMarks),
+        ctWeight: Number(ctWeight),
+        isLab,
+        courseTeachers: teachers,
+      });
+      router.back();
+    } catch (error) {
+      setSubmitError(FirebaseError(error));
+    }
   };
 
   return (
     <>
-      <BackStep title="New Course" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView>
+      <BackStep title="New course" onBack={() => router.back()} />
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView style={styles.flex} contentContainerStyle={{ paddingBottom: 32 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={{ paddingLeft: 8 }}>Semester</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
@@ -87,7 +103,7 @@ export default function NewCourseScreen() {
                 />
               ))}
             </ScrollView>
-            {errors.semesterId && <Text style={styles.error}>{errors.semesterId}</Text>}
+            {errors.semesterId && <Text style={[styles.error, { color: palette.risk }]}>{errors.semesterId}</Text>}
           </View>
 
           <View style={styles.section}>
@@ -184,7 +200,8 @@ export default function NewCourseScreen() {
             </>
           )}
 
-          <Button title="Create Course" onPress={handleSubmit} loading={createCourse.isPending} />
+          {submitError ? <Text style={[styles.error, { color: palette.risk }]}>{submitError}</Text> : null}
+          <Button title="Add course" onPress={handleSubmit} loading={createCourse.isPending} />
         </ScrollView>
       </Wrapper>
     </>
@@ -217,7 +234,6 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   error: {
-    color: '#e5484d',
     fontSize: 13,
   },
 });

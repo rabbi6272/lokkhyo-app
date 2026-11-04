@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useTheme } from '@/providers/theme-provider';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -18,6 +19,7 @@ export default function NewRoutineSlotScreen() {
   const router = useRouter();
   const { createRoutineSlot } = useRoutines();
   const { courses } = useCourses();
+  const { palette } = useTheme();
 
   const [dayOfWeek, setDayOfWeek] = useState<number>(getTodayOfWeek());
   const [courseId, setCourseId] = useState('');
@@ -55,9 +57,12 @@ export default function NewRoutineSlotScreen() {
 
   return (
     <>
-      <BackStep title="New Routine Slot" onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex} >
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <BackStep title="Add class" onBack={() => router.back()} />
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={{ paddingLeft: 8 }}>Day</ThemedText>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -91,7 +96,7 @@ export default function NewRoutineSlotScreen() {
                 ))}
               </ScrollView>
             )}
-            {errors.courseId ? <Text style={styles.error}>{errors.courseId}</Text> : null}
+            {errors.courseId ? <Text style={[styles.error, { color: palette.risk }]}>{errors.courseId}</Text> : null}
           </View>
 
           <Field
@@ -122,7 +127,7 @@ export default function NewRoutineSlotScreen() {
           />
 
           <Button
-            title="Save Slot"
+            title="Add class"
             onPress={handleSubmit}
             loading={createRoutineSlot.isPending}
           />
@@ -151,7 +156,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   error: {
-    color: '#e5484d',
     fontSize: 13,
   },
 });

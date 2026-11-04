@@ -1,11 +1,14 @@
 import { useMemo } from 'react';
-import { useMutation, useQueries, useQueryClient } from '@tanstack/react-query';
+import { useQueries } from '@tanstack/react-query';
 
 import { useAuth } from '@/providers/auth-provider';
 import { useCourses } from '@/hooks/useCourses';
 import { useRoutines } from '@/hooks/useRoutines';
 import { useSemesters } from '@/hooks/useSemesters';
-import { listAttendance, setAttendanceStatus } from '@/services/Attendance';
+import {
+  courseAttendanceQuery,
+  useMarkAttendanceMutation,
+} from '@/services/attendance/attendance.hooks';
 import {
   computeAttendanceStats,
   generateSessionOccurrences,
@@ -13,7 +16,7 @@ import {
   type AttendanceSession,
   type AttendanceStats,
 } from '@/lib/attendance';
-import type { AttendanceStatus, Course } from '@/lib/types';
+import type { Course } from '@/lib/types';
 
 export interface CourseAttendance {
   course: Course;
@@ -29,22 +32,24 @@ export interface DaySession {
 }
 
 /**
- * Loads and computes attendance across every course at once: per-course
- * stats, a date-indexed map of every course's sessions (for a unified
- * calendar), and an aggregate percent/at-risk count across all of them.
+ * Loads and computes attendance across courses: per-course
+ * stats, a date-indexed map of sessions (for a unified
+ * calendar), and an aggregate percent/at-risk count.
+ *
+ * Pass `targetCourses` to limit attendance queries to only the displayed
+ * courses (e.g. on Dashboard or a single Course screen), preventing massive
+ * parallel network fan-out on cold start.
  */
-export function useAllCoursesAttendance() {
+export function useAllCoursesAttendance(targetCourses?: Course[]) {
   const { user } = useAuth();
-  const { courses } = useCourses();
+  const { courses: allCourses } = useCourses();
   const { slots } = useRoutines();
   const { semesters } = useSemesters();
 
+  const courses = targetCourses ?? allCourses;
+
   const attendanceQueries = useQueries({
-    queries: courses.map((course) => ({
-      queryKey: ['attendance', course.id],
-      queryFn: () => (user ? listAttendance(user.uid, course.id) : []),
-      enabled: !!user && !!course.id,
-    })),
+    queries: courses.map((course) => courseAttendanceQuery(user?.uid, course.id)),
   });
 
   const isLoading = attendanceQueries.some((q) => q.isLoading);
@@ -99,15 +104,5 @@ export function useAllCoursesAttendance() {
  */
 export function useMarkAttendance() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ courseId, date, slotId, status }: { courseId: string; date: string; slotId: string; status: AttendanceStatus }) => {
-      if (!user) throw new Error('Not authenticated');
-      return setAttendanceStatus(user.uid, courseId, date, slotId, status);
-    },
-    onSuccess: (_, vars) => {
-      queryClient.invalidateQueries({ queryKey: ['attendance', vars.courseId] });
-    },
-  });
+  return useMarkAttendanceMutation(user?.uid);
 }

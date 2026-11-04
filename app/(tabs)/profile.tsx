@@ -1,121 +1,191 @@
 import { useRouter } from 'expo-router';
-import { ActivityIndicator, Alert, Modal, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
+import { Avatar } from '@/components/ui/Avatar';
+import { PageBackground } from '@/components/ui/Wrapper';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
+import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
-import { Wrapper } from '@/components/ui/Wrapper';
-import { Colors } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useSemesters } from '@/hooks/useSemesters';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useAuth } from '@/providers/auth-provider';
-import { signOut } from '@/services/Auth';
-import { useState } from 'react';
+import { useCgpa } from '@/services/grades/grades.hooks';
+import { formatGpa } from '@/services/grades/grades.services';
+import { signOut } from '@/services/auth/auth.services';
 
 export default function ProfileScreen() {
   const { user } = useAuth();
   const { profileData, isLoading } = useProfile();
   const { semesters } = useSemesters();
+  const { data: cgpa } = useCgpa(user?.uid);
+  const { palette, resolved, fontFamily } = useTheme();
+  const isDark = resolved === 'dark';
   const router = useRouter();
   const [signoutModalVisible, setSignoutModalVisible] = useState(false);
 
   const currentSemester = semesters.find((s) => s.id === profileData?.currentSemesterId);
-  const displayName = profileData?.fullName || 'Student';
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }} edges={['top']}>
-        <View style={{ alignItems: 'center', gap: 12 }}>
-          <ActivityIndicator size="large" color={Colors.tint} />
-          <ThemedText style={styles.loadingText}>Loading profile…</ThemedText>
-        </View>
-      </SafeAreaView>
-    );
-  }
+  const fullName = profileData?.fullName || user?.displayName || 'Student';
+  const email = user?.email ?? '';
 
   return (
-    <Wrapper>
-      <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <View style={styles.avatar}>
-            <SvgIcon name="user" size={60} color={Colors.tint} />
-          </View>
-          <View style={styles.header}>
-            <ThemedText type="defaultSemiBold" style={styles.name}>{displayName}</ThemedText>
-            <ThemedText style={styles.email}>{user?.email}</ThemedText>
-          </View>
-        </View>
+    <PageBackground>
+      <StatusBar barStyle={isDark ? 'light-content' : 'light-content'} backgroundColor="transparent" translucent />
 
-        <View style={styles.listCard}>
-          <MenuRow
-            icon="courses"
-            label="Courses"
-            onPress={() => router.push('/(tabs)/courses')}
-          />
-          <MenuRow
-            icon="routine"
-            label="Routine"
-            onPress={() => router.push('/(tabs)/routine')}
-          />
-          <MenuRow
-            icon="calender"
-            label="Attendance"
-            onPress={() => router.push('/(tabs)/attendance')}
-          />
-          <MenuRow
-            icon="settings"
-            label="Settings"
-            onPress={() => router.push('/settings/settings')}
-          />
-        </View>
+      <SafeAreaView
+        edges={['top']}
+        style={[
+          styles.masthead,
+          {
+            backgroundColor: isDark ? palette.surface : palette.teal,
+            borderColor: palette.line,
+            borderBottomWidth: isDark ? StyleSheet.hairlineWidth : 0,
+          },
+        ]}>
+        <View style={styles.mastheadInner}>
+          {/* <Text style={styles.eyebrow}>LOKKHYO</Text> */}
 
-        <View style={styles.listCard}>
-          <InfoRow label="University" value={profileData?.university || '—'} />
-          <InfoRow label="Department" value={profileData?.department || '—'} />
-          <InfoRow label="Semester" value={currentSemester?.name || '—'} />
-          <InfoRow label="Target CGPA" value={profileData?.targetCgpa ? String(profileData.targetCgpa) : '—'} last />
-        </View>
-
-        <View style={styles.listCard}>
-          <Pressable
-            style={{ flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 14 }}
-            onPress={() => setSignoutModalVisible(true)}>
-            <SvgIcon name="logout" size={22} color="#dc2626" />
-            <ThemedText style={styles.logOutLabel} type='defaultSemiBold'>Log Out</ThemedText>
-          </Pressable>
-        </View>
-
-        <ThemedText style={styles.versionText}>App version 1.0.0</ThemedText>
-
-        <Modal visible={signoutModalVisible} backdropColor="rgba(0, 0, 0, 0.4)" animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <ThemedText type="title" style={styles.modalTitle}>
-                Sign out?
-              </ThemedText>
-              <ThemedText>
-                Are you sure you want to sign out? You will need to log in again to access your account.
-              </ThemedText>
-              <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
-                <Button
-                  title="Sign Out"
-                  variant="destructive"
-                  onPress={async () => {
-                    try {
-                      await signOut();
-                    } catch (error) {
-                      Alert.alert('Error', 'Failed to sign out. Please try again.');
-                    }
-                  }}
-                />
-              </View>
+          <View style={styles.identity}>
+            <Avatar name={fullName} photoUrl={profileData?.photoUrl} size={64} tone={isDark ? 'onPage' : 'onTeal'} />
+            <View style={styles.identityText}>
+              <Text
+                style={[
+                  styles.name,
+                  { color: isDark ? palette.ink : '#FFFFFF', fontFamily: fontFamily.displayBold },
+                ]}
+                numberOfLines={1}>
+                {fullName}
+              </Text>
+              {email ? (
+                <Text
+                  style={[
+                    styles.email,
+                    { color: isDark ? palette.muted : 'rgba(255,255,255,0.85)', fontFamily: fontFamily.regular },
+                  ]}
+                  numberOfLines={1}>
+                  {email}
+                </Text>
+              ) : null}
             </View>
           </View>
-        </Modal>
+        </View>
+      </SafeAreaView>
+
+      <ScrollView
+        style={styles.body}
+        contentContainerStyle={styles.bodyContent}
+        showsVerticalScrollIndicator={false}>
+        {isLoading ? (
+          <View style={styles.loading}>
+            <ActivityIndicator color={palette.teal} />
+            <ThemedText style={styles.loadingText}>Loading profile…</ThemedText>
+          </View>
+        ) : (
+          <>
+            <Section title="ACADEMIC">
+              <InfoRow label="University" value={profileData?.university || '—'} />
+              <InfoRow label="Department" value={profileData?.department || '—'} />
+              <InfoRow label="Semester" value={currentSemester?.name || '—'} />
+              <InfoRow label="CGPA" value={formatGpa(cgpa?.cgpa)} />
+              <InfoRow
+                label="Target CGPA"
+                value={profileData?.targetCgpa ? String(profileData.targetCgpa) : '—'}
+                last
+              />
+            </Section>
+
+            <Section title="QUICK LINKS">
+              <MenuRow
+                icon="courses"
+                label="Courses"
+                onPress={() => router.push('/(tabs)/courses')}
+              />
+              <MenuRow
+                icon="calender"
+                label="Semesters"
+                onPress={() => router.push('/semesters')}
+              />
+              <MenuRow icon="routine" label="Routine" onPress={() => router.push('/(tabs)/routine')} />
+              <MenuRow
+                icon="calender"
+                label="Attendance"
+                onPress={() => router.push('/(tabs)/attendance')}
+              />
+              <MenuRow
+                icon="courses"
+                label="Transcript & degree status"
+                onPress={() => router.push('/profile/transcript')}
+              />
+              <MenuRow
+                icon="courses"
+                label="What-if GPA simulator"
+                onPress={() => router.push('/profile/simulator')}
+              />
+              <MenuRow
+                icon="settings"
+                label="Settings"
+                onPress={() => router.push('/settings/settings')}
+                last
+              />
+            </Section>
+
+            <Section title="ACCOUNT">
+              <Pressable
+                accessibilityRole="button"
+                style={({ pressed }) => [styles.row, pressed && styles.pressed]}
+                onPress={() => setSignoutModalVisible(true)}>
+                <View style={styles.rowLeft}>
+                  <SvgIcon name="logout" size={20} color={palette.risk} />
+                  <ThemedText type="defaultSemiBold" style={[styles.dangerLabel, { color: palette.risk }]}>
+                    Log out
+                  </ThemedText>
+                </View>
+              </Pressable>
+            </Section>
+
+            <ThemedText style={styles.versionText}>Lokkhyo · version 1.1.0</ThemedText>
+          </>
+        )}
       </ScrollView>
-    </Wrapper>
+
+      <BlurredModal visible={signoutModalVisible} onClose={() => setSignoutModalVisible(false)}>
+        <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
+          <ThemedText type="title" style={styles.modalTitle}>
+            Sign out?
+          </ThemedText>
+          <ThemedText>
+            Are you sure you want to sign out? You will need to log in again to access your account.
+          </ThemedText>
+          <View style={styles.modalButtons}>
+            <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
+            <Button
+              title="Sign Out"
+              variant="destructive"
+              onPress={async () => {
+                try {
+                  await signOut();
+                } catch {
+                  Alert.alert('Error', 'Failed to sign out. Please try again.');
+                }
+              }}
+            />
+          </View>
+        </View>
+      </BlurredModal>
+    </PageBackground>
   );
 }
 
@@ -125,27 +195,36 @@ function MenuRow({
   onPress,
   last,
 }: {
-  icon: 'courses' | 'calender' | 'settings' | 'logout' | 'routine';
+  icon: 'courses' | 'calender' | 'settings' | 'routine';
   label: string;
   onPress: () => void;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
-    <Pressable style={[styles.menuRow, !last && styles.rowDivider]} onPress={onPress}>
-      <View style={styles.menuRowLeft}>
-        <SvgIcon name={icon} size={20} color={Colors.icon} />
-        <ThemedText style={styles.menuLabel}>{label}</ThemedText>
+    <Pressable
+      accessibilityRole="button"
+      style={({ pressed }) => [
+        styles.row,
+        !last && [styles.rowDivider, { borderBottomColor: palette.line }],
+        pressed && styles.pressed,
+      ]}
+      onPress={onPress}>
+      <View style={styles.rowLeft}>
+        <SvgIcon name={icon} size={20} color={palette.muted} />
+        <ThemedText style={styles.rowLabel}>{label}</ThemedText>
       </View>
-      <ThemedText style={styles.chevron}>{'>'}</ThemedText>
+      <SvgIcon name="chevron" size={16} color={palette.faint} />
     </Pressable>
   );
 }
 
 function InfoRow({ label, value, last }: { label: string; value: string; last?: boolean }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.menuRow, !last && styles.rowDivider]}>
-      <ThemedText style={styles.infoLabel}>{label}</ThemedText>
-      <ThemedText type="defaultSemiBold" style={styles.infoValue}>
+    <View style={[styles.row, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]}>
+      <ThemedText style={styles.rowLabel}>{label}</ThemedText>
+      <ThemedText type="defaultSemiBold" style={styles.rowValue} numberOfLines={1}>
         {value}
       </ThemedText>
     </View>
@@ -153,104 +232,113 @@ function InfoRow({ label, value, last }: { label: string; value: string; last?: 
 }
 
 const styles = StyleSheet.create({
-  pageTitle: {
-    marginBottom: 16,
+  masthead: {
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
   },
-  card: {
+  mastheadInner: {
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  eyebrow: {
+    fontFamily: 'InterSemiBold',
+    fontSize: 12,
+    letterSpacing: 3,
+  },
+  identity: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    padding: 12,
-    marginBottom: 16,
-    backgroundColor: '#fff',
-    borderRadius: 16,
+    gap: 14,
+    marginTop: 16,
   },
-  avatar: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: Colors.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
+  identityText: {
     flex: 1,
-    gap: 4,
-    alignItems: 'flex-start',
+    gap: 3,
   },
   name: {
-    fontSize: 18,
+    fontSize: 21,
   },
   email: {
-    opacity: 0.6,
     fontSize: 13,
-    marginBottom: 8,
   },
   editButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 14,
+    alignSelf: 'flex-start',
+    marginTop: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 50,
+    borderWidth: 1,
+  },
+  editLabel: {
+    fontFamily: 'InterSemiBold',
+    fontSize: 13,
+  },
+  body: {
+    flex: 1,
+  },
+  bodyContent: {
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 104,
+  },
+  loading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 28,
   },
   loadingText: {
-    opacity: 0.8,
+    opacity: 0.7,
   },
-  listCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    marginBottom: 16,
-    paddingHorizontal: 16,
-  },
-  menuRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 14,
+    paddingVertical: 15,
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e5e5',
   },
-  menuRowLeft: {
+  rowLeft: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
+    flex: 1,
   },
-  menuLabel: {
+  rowLabel: {
     fontSize: 15,
   },
-  chevron: {
-    opacity: 0.4,
-    fontSize: 16,
-  },
-  infoLabel: {
-    opacity: 0.6,
-    fontSize: 15,
-  },
-  infoValue: {
+  rowValue: {
     fontSize: 15,
     textAlign: 'right',
-    flex: 1,
+    flexShrink: 1,
     marginLeft: 16,
   },
-  logOutLabel: {
-    color: '#dc2626',
+  chevron: {
+    fontSize: 18,
+    lineHeight: 20,
+  },
+  dangerLabel: {
     fontSize: 15,
-    fontWeight: '600',
+  },
+  pressed: {
+    opacity: 0.6,
   },
   versionText: {
     textAlign: 'center',
     opacity: 0.4,
     fontSize: 12,
-    marginBottom: 24,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(15,30,36,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 32,
     padding: 20,
     width: '100%',

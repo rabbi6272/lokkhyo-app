@@ -1,4 +1,5 @@
 import { ExternalPathString, useLocalSearchParams, useRouter } from 'expo-router';
+import { useTheme } from '@/providers/theme-provider';
 import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
@@ -12,8 +13,7 @@ import { useCourses } from '@/hooks/useCourses';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useUpcomingReminders } from '@/hooks/useUpcomingReminders';
 import { ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS } from '@/lib/constants';
-import { formatDateLabel, getAssessmentReminderTrigger, getReminderLeadDays, toDateKey } from '@/lib/reminders';
-import { formatTime12h } from '@/lib/routine';
+import { buildReminderRangeHint } from '@/lib/reminders';
 import type { AssessmentType } from '@/lib/types';
 import { required } from '@/lib/validate';
 
@@ -23,6 +23,7 @@ export default function ReminderFormScreen() {
   const { courseId, reminderId } = useLocalSearchParams<{ courseId?: string; reminderId?: string }>();
   const router = useRouter();
   const { courses } = useCourses();
+  const { palette } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState(courseId ?? '');
   const effectiveCourseId = courseId ?? selectedCourseId;
   const course = courses.find((c) => c.id === effectiveCourseId);
@@ -54,20 +55,7 @@ export default function ReminderFormScreen() {
     ? null
     : !prefs.assessmentRemindersEnabled
       ? 'Assessment reminders are off — enable them in Settings.'
-      : (() => {
-          const trigger = getAssessmentReminderTrigger(
-            trimmedDate,
-            type,
-            new Date(),
-            prefs.reminderHour,
-            prefs.reminderMinute,
-          );
-          if (!trigger) return 'No reminder — this date is too close or already past.';
-          const hhmm = `${String(prefs.reminderHour).padStart(2, '0')}:${String(prefs.reminderMinute).padStart(2, '0')}`;
-          const lead = getReminderLeadDays(type);
-          const leadLabel = lead ? ` · ${lead} day${lead > 1 ? 's' : ''} before` : '';
-          return `Reminder ${formatDateLabel(toDateKey(trigger))} at ${formatTime12h(hhmm)}${leadLabel}`;
-        })();
+      : buildReminderRangeHint(trimmedDate, type, prefs);
 
   const handleSubmit = async () => {
     const nextErrors: Record<string, string | null> = {
@@ -99,9 +87,12 @@ export default function ReminderFormScreen() {
 
   return (
     <>
-      <BackStep title={isEditing ? 'Edit Reminder' : 'New Reminder'} onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <BackStep title={isEditing ? 'Edit reminder' : 'New reminder'} onBack={() => router.back()} />
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
           <ThemedText style={styles.intro}>
             Get a notification before this {ASSESSMENT_TYPE_LABELS[type].toLowerCase()} — no marks needed. Record
             marks later when it happens.
@@ -123,7 +114,7 @@ export default function ReminderFormScreen() {
                   />
                 ))}
               </View>
-              {errors.course && <ThemedText style={styles.error}>{errors.course}</ThemedText>}
+              {errors.course && <ThemedText style={[styles.error, { color: palette.risk }]}>{errors.course}</ThemedText>}
             </View>
           )}
 
@@ -164,7 +155,7 @@ export default function ReminderFormScreen() {
           {reminderHint && <ThemedText style={styles.reminderHint}>⏰ {reminderHint}</ThemedText>}
 
           <Button
-            title={isEditing ? 'Save Changes' : 'Save Reminder'}
+            title={isEditing ? 'Save changes' : 'Save reminder'}
             onPress={handleSubmit}
             loading={isSaving}
             disabled={isEditing && isLoading}
@@ -212,7 +203,6 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   error: {
-    color: '#e5484d',
     fontSize: 13,
   },
 });

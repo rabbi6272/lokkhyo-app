@@ -10,8 +10,7 @@ import { useAssessments } from '@/hooks/useAssessments';
 import { useCourses } from '@/hooks/useCourses';
 import { useUpcomingReminders } from '@/hooks/useUpcomingReminders';
 import { ASSESSMENT_TYPES, ASSESSMENT_TYPE_LABELS } from '@/lib/constants';
-import { formatDateLabel, getAssessmentReminderTrigger, getReminderLeadDays, toDateKey } from '@/lib/reminders';
-import { formatTime12h } from '@/lib/routine';
+import { buildReminderRangeHint } from '@/lib/reminders';
 import type { AssessmentType } from '@/lib/types';
 import { clampMarks, isNumeric, required } from '@/lib/validate';
 import { Wrapper } from '@/components/ui/Wrapper';
@@ -68,20 +67,7 @@ export default function AssessmentFormScreen() {
     ? null
     : !prefs.assessmentRemindersEnabled
       ? 'Assessment reminders are off — enable them in Settings.'
-      : (() => {
-          const trigger = getAssessmentReminderTrigger(
-            trimmedDate,
-            type,
-            new Date(),
-            prefs.reminderHour,
-            prefs.reminderMinute,
-          );
-          if (!trigger) return 'No reminder — this date is too close or already past.';
-          const hhmm = `${String(prefs.reminderHour).padStart(2, '0')}:${String(prefs.reminderMinute).padStart(2, '0')}`;
-          const lead = getReminderLeadDays(type);
-          const leadLabel = lead ? ` · ${lead} day${lead > 1 ? 's' : ''} before` : '';
-          return `Reminder ${formatDateLabel(toDateKey(trigger))} at ${formatTime12h(hhmm)}${leadLabel}`;
-        })();
+      : buildReminderRangeHint(trimmedDate, type, prefs);
 
   useEffect(() => {
     if (editingAssessment) {
@@ -138,9 +124,12 @@ export default function AssessmentFormScreen() {
 
   return (
     <>
-      <BackStep title={isEditing ? 'Edit Assessment' : 'New Assessment'} onBack={() => router.back()} />
-      <Wrapper noTopMargin style={styles.flex}>
-        <ScrollView keyboardShouldPersistTaps="handled">
+      <BackStep title={isEditing ? 'Edit mark' : 'Add mark'} onBack={() => router.back()} />
+      <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 32 }}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
 
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" >Type</ThemedText>
@@ -230,7 +219,7 @@ export default function AssessmentFormScreen() {
           )}
 
           <Button
-            title={isEditing ? 'Save Changes' : 'Save Assessment'}
+            title={isEditing ? 'Save changes' : 'Save mark'}
             onPress={handleSubmit}
             loading={isSaving}
           />

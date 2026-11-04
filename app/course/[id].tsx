@@ -1,13 +1,20 @@
-import { ExternalPathString, useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, findNodeHandle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { AttendanceMeter } from '@/components/AttendanceMeter';
+import { FinalGradeCard } from '@/components/grades/FinalGradeCard';
+import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
-import { Button } from '@/components/ui/Button';
-import { ProgressBar } from '@/components/ui/ProgressBar';
+import { BackStep } from '@/components/ui/BackStep';
+import { Card, Divider } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { ProgressRing } from '@/components/ui/ProgressRing';
+import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Colors } from '@/constants/theme';
+import { Radius, Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
 import { useAssessments } from '@/hooks/useAssessments';
 import { useCourses } from '@/hooks/useCourses';
@@ -24,12 +31,14 @@ export default function CourseDetailScreen() {
     reminderId?: string;
   }>();
   const router = useRouter();
+  const { palette } = useTheme();
 
   const { courses, isLoading: isCoursesLoading } = useCourses();
   const course = courses.find((c) => c.id === id);
   const { assessments, isLoading: isAssessmentsLoading, deleteAssessment } = useAssessments(id ?? '');
   const { reminders, isLoading: isRemindersLoading, deleteReminder } = useUpcomingReminders(id ?? '');
-  const { courseAttendance } = useAllCoursesAttendance();
+  const targetCourses = useMemo(() => (course ? [course] : []), [course]);
+  const { courseAttendance } = useAllCoursesAttendance(targetCourses);
   const prefs = useNotificationPreferences();
 
   const sortedReminders = [...reminders].sort((a, b) => a.date.localeCompare(b.date));
@@ -44,6 +53,7 @@ export default function CourseDetailScreen() {
       ? `as:${highlightAssessmentId}`
       : null;
 
+  // Opened from a notification: scroll to the row it is about and flash it.
   useEffect(() => {
     if (!highlightKey || isAssessmentsLoading || isRemindersLoading) return;
     setHighlightId(highlightKey);
@@ -66,292 +76,207 @@ export default function CourseDetailScreen() {
   }, [highlightKey, isAssessmentsLoading, isRemindersLoading, assessments, reminders]);
 
   const attendanceStats = courseAttendance.find((c) => c.course.id === id)?.stats;
-
-  const { percent, max, obtained } = courseProgress(assessments, attendanceStats?.mark ?? 0);
+  const { percent, obtained, max } = courseProgress(assessments, attendanceStats?.mark ?? 0);
+  const passMarks = course?.passMarks && course.passMarks > 0 ? course.passMarks : undefined;
+  const belowPass = passMarks !== undefined && percent < passMarks;
 
   const handleDelete = (assessmentId: string, name: string) => {
-    Alert.alert('Delete assessment', `Delete "${name}"?`, [
+    Alert.alert('Delete mark', `Delete "${name}"? This also removes it from your CT progress.`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteAssessment.mutate(assessmentId),
-      },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteAssessment.mutate(assessmentId) },
     ]);
   };
 
   const handleDeleteReminder = (reminderId: string, name: string) => {
     Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteReminder.mutate(reminderId),
-      },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteReminder.mutate(reminderId) },
     ]);
   };
 
   if (isCoursesLoading || isAssessmentsLoading) {
     return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={Colors.tint} />
-        <ThemedText>Loading course…</ThemedText>
+      <View style={[styles.centered, { backgroundColor: palette.mist }]}>
+        <ActivityIndicator size="large" color={palette.teal} />
       </View>
     );
   }
 
   if (!course) {
     return (
-      <View style={styles.centered}>
-        <ThemedText>Course not found.</ThemedText>
-      </View>
+      <>
+        <BackStep title="Course" onBack={() => router.back()} />
+        <Wrapper noTopMargin style={styles.centered}>
+          <ThemedText type="caption">This course no longer exists.</ThemedText>
+        </Wrapper>
+      </>
     );
   }
 
+  const meta = [`${course.credits} credits`, course.isLab ? 'Lab' : `${course.ctWeight}% CT weight`]
+    .filter(Boolean)
+    .join(' · ');
+
   return (
-    <Wrapper style={styles.container}>
-      <ScrollView ref={scrollRef} showsVerticalScrollIndicator={false}>
+    <>
+      <BackStep title={course.code} onBack={() => router.back()} />
+      <Wrapper noTopMargin>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <ThemedText type="title">{course?.code}</ThemedText>
-          <ThemedText style={styles.title}>{course?.title}</ThemedText>
-          <ThemedText style={styles.meta}>{course?.credits} credits · {course?.ctWeight}% CT weight</ThemedText>
-          {course?.courseTeachers && course.courseTeachers.length > 0 && (
-            <ThemedText style={styles.meta}>Taught by {course.courseTeachers.join(', ')}</ThemedText>
+          <ThemedText type="title" style={styles.courseTitle}>
+            {course.title}
+          </ThemedText>
+          <ThemedText type="caption">{meta}</ThemedText>
+          {course.courseTeachers && course.courseTeachers.length > 0 && (
+            <ThemedText type="caption">Taught by {course.courseTeachers.join(', ')}</ThemedText>
           )}
         </View>
 
-        <View style={styles.summary}>
-          <View style={styles.summaryRow}>
-            <ThemedText type="subtitle">Overall progress</ThemedText>
-            <ThemedText type="subtitle" style={styles.percent}>{percent}%</ThemedText>
-          </View>
-          <ProgressBar percent={percent} />
-        </View>
-
-        <View style={styles.row}>
-          <ThemedText type="subtitle">Upcoming</ThemedText>
-          <Button
-            title="+Add"
-            variant="ghost"
-            onPress={() => router.push(`/reminder/new?courseId=${course?.id}` as ExternalPathString)}
+        <Card style={styles.progress}>
+          <ProgressRing
+            percent={percent}
+            target={passMarks}
+            size={88}
+            color={belowPass ? palette.warn : palette.teal}
+            showValue={false}
           />
-        </View>
+          <View style={styles.progressText}>
+            <ThemedText type="eyebrow">CT PROGRESS</ThemedText>
+            <View style={styles.progressFigure}>
+              <ThemedText type="figure">{Math.round(obtained)}</ThemedText>
+              <ThemedText type="caption">/ {max}</ThemedText>
+            </View>
+            <ThemedText type="caption" color={belowPass ? palette.warn : palette.muted}>
+              {passMarks === undefined
+                ? 'CTs, assignments and attendance mark'
+                : belowPass
+                  ? `${Math.ceil(passMarks - obtained)} below the pass mark of ${passMarks}`
+                  : `Above the pass mark of ${passMarks}`}
+            </ThemedText>
+          </View>
+        </Card>
 
+        <SectionHeader
+          title="Upcoming"
+          actionLabel="Add"
+          onAction={() => router.push({ pathname: '/reminder/new', params: { courseId: course.id } })}
+        />
         {isRemindersLoading ? (
-          <ThemedText style={styles.meta}>Loading…</ThemedText>
+          <ActivityIndicator color={palette.teal} />
         ) : sortedReminders.length === 0 ? (
-          <ThemedText style={styles.upcomingEmpty}>
-            Nothing scheduled. Add an upcoming CT, quiz or assignment to get a reminder.
-          </ThemedText>
+          <EmptyState title="Nothing scheduled" body="Add an upcoming CT, quiz or assignment to get a reminder." />
         ) : (
-          sortedReminders.map((r) => {
-            const reminderLine = buildReminderLine(r, prefs);
-            const isHighlighted = highlightId === `rm:${r.id}`;
-            return (
+          <Card dense style={styles.list}>
+            {sortedReminders.map((r, index) => (
               <View
                 key={r.id}
                 ref={(el) => {
                   rowRefs.current[`rm:${r.id}`] = el;
-                }}
-                style={[
-                  styles.assessment,
-                  { borderColor: isHighlighted ? Colors.tint : Colors.icon },
-                  isHighlighted && styles.assessmentHighlighted,
-                ]}
-              >
-                <Pressable
-                  style={styles.assessmentRow}
+                }}>
+                {index > 0 && <Divider />}
+                <ReminderRow
+                  name={r.name}
+                  type={r.type}
+                  date={r.date}
+                  reminderLine={buildReminderLine(r, prefs)}
+                  highlighted={highlightId === `rm:${r.id}`}
                   onPress={() =>
-                    router.push(`/reminder/new?courseId=${course?.id}&reminderId=${r.id}` as ExternalPathString)
+                    router.push({ pathname: '/reminder/new', params: { courseId: course.id, reminderId: r.id } })
                   }
-                >
-                  <View style={styles.assessmentInfo}>
-                    <ThemedText type="defaultSemiBold">
-                      {r.name}{' '}
-                      <ThemedText style={styles.meta}>· {ASSESSMENT_TYPE_LABELS[r.type]}</ThemedText>
-                    </ThemedText>
-                    <ThemedText style={styles.meta}>{formatDateLabel(r.date)}</ThemedText>
-                    {reminderLine && <ThemedText style={styles.reminder}>⏰ {reminderLine}</ThemedText>}
-                  </View>
-                  <Pressable onPress={() => handleDeleteReminder(r.id, r.name)} hitSlop={8}>
-                    <SvgIcon size={20} name="trash" color="#e5484d" />
-                  </Pressable>
-                </Pressable>
+                  onDelete={() => handleDeleteReminder(r.id, r.name)}
+                />
               </View>
-            );
-          })
+            ))}
+          </Card>
         )}
 
-        <View style={[styles.row, styles.assessmentsHeader]}>
-          <ThemedText type="subtitle">Assessments</ThemedText>
-          <Button
-            title="+Add"
-            variant="ghost"
-            onPress={() => router.push(`/assessment/new?courseId=${course?.id}`)}
+        <SectionHeader
+          title="Marks"
+          actionLabel="Add"
+          onAction={() => router.push({ pathname: '/assessment/new', params: { courseId: course.id } })}
+        />
+        {assessments.length === 0 ? (
+          <EmptyState
+            title="No marks yet"
+            body="Record a CT, quiz or assignment mark to see your progress."
+            actionLabel="Add a mark"
+            onAction={() => router.push({ pathname: '/assessment/new', params: { courseId: course.id } })}
           />
-        </View>
-
-        {isAssessmentsLoading ? (
-          <ThemedText>Loading assessments…</ThemedText>
-        ) : assessments.length === 0 ? (
-          <View style={{ alignItems: 'center', marginTop: 10 }}>
-            <SvgIcon name="empty" size={200} color={Colors.icon} />
-            <ThemedText style={styles.meta}>No assessments yet. Add your first CT mark.</ThemedText>
-            <Button
-              style={{ marginTop: 10 }}
-              title="+Add"
-              variant="ghost"
-              onPress={() => router.push(`/assessment/new?courseId=${course?.id}`)}
-            />
-          </View>
         ) : (
-          assessments.map((a) => {
-            const reminderLine = buildReminderLine(a, prefs);
-            const isHighlighted = highlightId === `as:${a.id}`;
-            return (
-              <View
-                key={a.id}
-                ref={(el) => {
-                  rowRefs.current[`as:${a.id}`] = el;
-                }}
-                style={[
-                  styles.assessment,
-                  { borderColor: isHighlighted ? Colors.tint : Colors.icon },
-                  isHighlighted && styles.assessmentHighlighted,
-                ]}
-              >
-                <Pressable
-                  style={styles.assessmentRow}
-                  onPress={() => router.push(`/assessment/new?courseId=${course?.id}&assessmentId=${a.id}`)}
-                >
-                  <View style={styles.assessmentInfo}>
-                    <ThemedText type="defaultSemiBold">
-                      {a.name} <ThemedText style={styles.meta}>· {ASSESSMENT_TYPE_LABELS[a.type]}</ThemedText>
+          <Card dense style={styles.list}>
+            {assessments.map((a, index) => {
+              const highlighted = highlightId === `as:${a.id}`;
+              return (
+                <View
+                  key={a.id}
+                  ref={(el) => {
+                    rowRefs.current[`as:${a.id}`] = el;
+                  }}>
+                  {index > 0 && <Divider />}
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`${a.name}, ${a.marksObtained} of ${a.maxMarks}`}
+                    onPress={() =>
+                      router.push({ pathname: '/assessment/new', params: { courseId: course.id, assessmentId: a.id } })
+                    }
+                    style={({ pressed }) => [
+                      styles.mark,
+                      highlighted && [styles.highlighted, { backgroundColor: palette.tealSoft }],
+                      pressed && { opacity: 0.7 },
+                    ]}>
+                    <View style={styles.markText}>
+                      <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                        {a.name}
+                      </ThemedText>
+                      <ThemedText type="caption" numberOfLines={1}>
+                        {ASSESSMENT_TYPE_LABELS[a.type]} · {formatDateLabel(a.date)}
+                        {a.teacherName ? ` · ${a.teacherName}` : ''}
+                      </ThemedText>
+                    </View>
+                    <ThemedText type="number">
+                      {a.marksObtained}
+                      <ThemedText type="caption"> / {a.maxMarks}</ThemedText>
                     </ThemedText>
-                    <ThemedText style={styles.meta}>
-                      {a.marksObtained} / {a.maxMarks} · weight {a.weight}% · {a.date}
-                      {a.teacherName ? ` · ${a.teacherName}` : ''}
-                    </ThemedText>
-                    {reminderLine && <ThemedText style={styles.reminder}>⏰ {reminderLine}</ThemedText>}
-                  </View>
-                  <Pressable onPress={() => handleDelete(a.id, a.name)} hitSlop={8}>
-                    <SvgIcon size={20} name="trash" color="#e5484d" />
+                    <Pressable
+                      accessibilityRole="button"
+                      accessibilityLabel={`Delete ${a.name}`}
+                      onPress={() => handleDelete(a.id, a.name)}
+                      hitSlop={10}>
+                      <SvgIcon size={18} name="trash" color={palette.faint} />
+                    </Pressable>
                   </Pressable>
-                </Pressable>
-              </View>
-            );
-          })
+                </View>
+              );
+            })}
+          </Card>
         )}
 
-        <Pressable
-          style={[styles.attendanceLink, { marginTop: 24 }]}
-          onPress={() => router.push('/(tabs)/attendance')}>
-          <View>
-            <ThemedText type="subtitle">Attendance</ThemedText>
-            <ThemedText style={styles.meta}>
-              {attendanceStats && attendanceStats.held > 0
-                ? `${attendanceStats.percent}% · mark ${attendanceStats.mark}/10${!attendanceStats.eligible ? ' · below eligibility' : ''}`
-                : 'No sessions recorded yet'}
-            </ThemedText>
-          </View>
-          <ThemedText style={styles.chevron}>{'>'}</ThemedText>
-        </Pressable>
+        <FinalGradeCard courseId={course.id} />
+
+        <SectionHeader title="Attendance" actionLabel="Open" href="/attendance" />
+        <Card dense style={styles.list}>
+          <AttendanceMeter code={course.code} stats={attendanceStats} />
+        </Card>
       </ScrollView>
-    </Wrapper >
+      </Wrapper>
+    </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  header: {
-    gap: 4,
-    marginBottom: 20,
-  },
-  title: {
-    fontSize: 18,
-    opacity: 0.8,
-  },
-  meta: {
-    opacity: 0.6,
-    fontSize: 14,
-  },
-  summary: {
-    gap: 8,
-    marginBottom: 24,
-  },
-  summaryRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  percent: {
-    fontSize: 15,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  empty: {
-    opacity: 0.7,
-    textAlign: 'center',
-    marginTop: 8,
-  },
-  upcomingEmpty: {
-    opacity: 0.6,
-    fontSize: 13,
-    marginBottom: 8,
-  },
-  assessmentsHeader: {
-    marginTop: 20,
-  },
-  assessment: {
-    borderWidth: 1,
-    borderLeftWidth: 5,
-    borderRadius: 16,
-    padding: 14,
-    marginBottom: 8,
-  },
-  assessmentHighlighted: {
-    backgroundColor: 'rgba(104, 112, 118, 0.12)',
-  },
-  reminder: {
-    opacity: 0.75,
-    fontSize: 13,
-    color: Colors.tint,
-  },
-  assessmentRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  assessmentInfo: {
-    flex: 1,
-    gap: 2,
-  },
-  attendanceLink: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-  },
-  chevron: {
-    opacity: 0.4,
-    fontSize: 16,
-  },
-  addButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
+  centered: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  content: { paddingBottom: Space.xxl },
+  header: { gap: 2, marginTop: Space.xs, marginBottom: Space.lg },
+  courseTitle: { fontSize: 22, lineHeight: 28 },
+  progress: { flexDirection: 'row', alignItems: 'center', gap: Space.lg },
+  progressText: { flex: 1, gap: 2 },
+  progressFigure: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  list: { paddingVertical: 0 },
+  mark: { flexDirection: 'row', alignItems: 'center', gap: Space.md, paddingVertical: Space.md },
+  markText: { flex: 1, gap: 1 },
+  highlighted: {
+    borderRadius: Radius.md,
+    marginHorizontal: -Space.sm,
+    paddingHorizontal: Space.sm,
   },
 });

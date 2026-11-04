@@ -1,139 +1,175 @@
-import { ExternalPathString, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
-import { Chip } from '@/components/ui/Chip';
-import { Colors } from '@/constants/theme';
+import { Card, Divider } from '@/components/ui/Card';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { PageHeader } from '@/components/ui/PageHeader';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { SvgIcon } from '@/components/ui/SvgIcon';
+import { Wrapper } from '@/components/ui/Wrapper';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllUpcomingReminders } from '@/hooks/useAllUpcomingReminders';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useRoutines } from '@/hooks/useRoutines';
 import { useDeleteUpcomingReminder } from '@/hooks/useUpcomingReminders';
 import { DAY_NAMES, DAY_SHORT_NAMES } from '@/lib/constants';
-import { buildReminderLine, formatDateLabel } from '@/lib/reminders';
-import { getTodayOfWeek } from '@/lib/routine';
+import { buildReminderLine } from '@/lib/reminders';
+import { formatTime12h, getTodayOfWeek } from '@/lib/routine';
 import { parseTime } from '@/lib/validate';
-import { Wrapper } from '@/components/ui/Wrapper';
-import { PageHeader } from '@/components/ui/PageHeader';
-import { SvgIcon } from '@/components/ui/SvgIcon';
-import { ThemeContext } from '@react-navigation/native';
 
 export default function RoutineScreen() {
-  const { slots, isLoading, deleteRoutineSlot } = useRoutines();
   const router = useRouter();
+  const { slots, isLoading, deleteRoutineSlot } = useRoutines();
   const { reminders: upcoming, isLoading: isUpcomingLoading } = useAllUpcomingReminders();
   const deleteUpcoming = useDeleteUpcomingReminder();
   const prefs = useNotificationPreferences();
+  const { palette, fontFamily } = useTheme();
 
-  const [selectedDay, setSelectedDay] = useState<number>(getTodayOfWeek());
+  const today = getTodayOfWeek();
+  const [selectedDay, setSelectedDay] = useState<number>(today);
 
   const daySlots = slots
     .filter((s) => s.dayOfWeek === selectedDay)
     .sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime));
 
-  const handleDelete = (slotId: string) => {
-    Alert.alert('Delete slot', 'Remove this class from your routine?', [
+  const handleDelete = (slotId: string, label: string) => {
+    Alert.alert('Remove class', `Remove ${label} from your ${DAY_NAMES[selectedDay]} routine?`, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteRoutineSlot.mutate(slotId) },
+      { text: 'Remove', style: 'destructive', onPress: () => deleteRoutineSlot.mutate(slotId) },
     ]);
   };
 
   const handleDeleteUpcoming = (reminderId: string, name: string, courseId: string) => {
     Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
       { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => deleteUpcoming.mutate({ courseId, reminderId }),
-      },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteUpcoming.mutate({ courseId, reminderId }) },
     ]);
   };
 
   return (
-    <Wrapper style={styles.safe}>
-      <PageHeader title="Routine" actions={"/routine/new" as ExternalPathString} icon="circleAdd" />
+    <Wrapper>
+      <PageHeader title="Routine" actions="/routine/new" actionLabel="Add class" />
 
-      <ScrollView contentContainerStyle={styles.content} horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.days}>
-          {DAY_NAMES.map((day, index) => (
-            <Chip
+      <View style={styles.week} accessibilityRole="tablist">
+        {DAY_SHORT_NAMES.map((day, index) => {
+          const selected = selectedDay === index;
+          const count = slots.filter((s) => s.dayOfWeek === index).length;
+          const isToday = index === today;
+          return (
+            <Pressable
               key={day}
-              label={DAY_SHORT_NAMES[index]}
-              selected={selectedDay === index}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              accessibilityLabel={`${DAY_NAMES[index]}, ${count} ${count === 1 ? 'class' : 'classes'}`}
               onPress={() => setSelectedDay(index)}
-            />
-          ))}
-        </View>
-      </ScrollView>
+              style={[
+                styles.day,
+                {
+                  backgroundColor: selected ? palette.teal : palette.surface,
+                  borderColor: selected ? palette.teal : palette.line,
+                },
+              ]}>
+              <ThemedText
+                style={[
+                  styles.dayLabel,
+                  {
+                    fontFamily: fontFamily.medium,
+                    color: selected ? palette.onTeal : isToday ? palette.teal : palette.muted,
+                  },
+                ]}>
+                {day}
+              </ThemedText>
+              <ThemedText
+                style={[
+                  styles.dayCount,
+                  {
+                    fontFamily: fontFamily.display,
+                    color: selected
+                      ? palette.onTeal
+                      : count === 0
+                        ? palette.faint
+                        : isToday
+                          ? palette.teal
+                          : palette.ink,
+                  },
+                ]}>
+                {count > 0 ? count : '–'}
+              </ThemedText>
+            </Pressable>
+          );
+        })}
+      </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.upcomingHeader}>
-          <ThemedText type="subtitle">Upcoming</ThemedText>
-          <Pressable onPress={() => router.push('/reminder/new' as ExternalPathString)} hitSlop={8}>
-            <ThemedText type='defaultSemiBold' style={{ fontSize: 13 }}>+Add</ThemedText>
-          </Pressable>
-        </View>
-
-        {isUpcomingLoading ? (
-          <ThemedText style={styles.upcomingEmpty}>Loading…</ThemedText>
-        ) : upcoming.length === 0 ? (
-          <ThemedText style={styles.upcomingEmpty}>
-            No upcoming tests or assignments. Tap + to set a reminder.
-          </ThemedText>
+      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+        <SectionHeader title={selectedDay === today ? `Today · ${DAY_NAMES[selectedDay]}` : DAY_NAMES[selectedDay]} first />
+        {isLoading ? (
+          <ActivityIndicator color={palette.teal} />
+        ) : daySlots.length === 0 ? (
+          <EmptyState
+            title={`No classes on ${DAY_NAMES[selectedDay]}`}
+            actionLabel="Add a class"
+            onAction={() => router.push('/routine/new')}
+          />
         ) : (
-          upcoming.map((r) => {
-            const reminderLine = buildReminderLine(r, prefs);
-            return (
-              <View key={r.id} style={[styles.slot, { borderColor: Colors.icon }]}>
-                <Pressable
-                  style={styles.slotRow}
-                  onPress={() =>
-                    router.push(`/reminder/new?courseId=${r.courseId}&reminderId=${r.id}` as ExternalPathString)
-                  }
-                >
-                  <View style={styles.slotInfo}>
-                    <ThemedText type="defaultSemiBold">
-                      {r.name} <ThemedText style={styles.meta}>· {r.courseCode}</ThemedText>
+          <Card dense style={styles.list}>
+            {daySlots.map((slot, index) => (
+              <View key={slot.id}>
+                {index > 0 && <Divider />}
+                <View style={styles.slot}>
+                  <View style={styles.time}>
+                    <ThemedText type="number" color={palette.teal}>
+                      {formatTime12h(slot.startTime)}
                     </ThemedText>
-                    <ThemedText style={styles.meta}>
-                      {formatDateLabel(r.date)}
-                    </ThemedText>
-                    {reminderLine && <ThemedText style={styles.reminder}>⏰ {reminderLine}</ThemedText>}
+                    <ThemedText type="caption">{formatTime12h(slot.endTime)}</ThemedText>
                   </View>
-                  <Pressable onPress={() => handleDeleteUpcoming(r.id, r.name, r.courseId)} hitSlop={8}>
-                    <SvgIcon size={20} name="trash" color="#e5484d" />
+                  <View style={[styles.rule, { backgroundColor: palette.tealSoft }]} />
+                  <View style={styles.slotText}>
+                    <ThemedText type="defaultSemiBold">{slot.courseLabel}</ThemedText>
+                    <ThemedText type="caption">{slot.room ? `Room ${slot.room}` : 'No room set'}</ThemedText>
+                  </View>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Remove ${slot.courseLabel} at ${slot.startTime}`}
+                    onPress={() => handleDelete(slot.id, slot.courseLabel)}
+                    hitSlop={10}>
+                    <SvgIcon size={18} name="trash" color={palette.faint} />
                   </Pressable>
-                </Pressable>
+                </View>
               </View>
-            );
-          })
+            ))}
+          </Card>
         )}
 
-        <ThemedText type="subtitle" style={styles.dayTitle}>
-          {DAY_NAMES[selectedDay]}
-        </ThemedText>
-
-        {isLoading ? (
-          <ThemedText>Loading routine…</ThemedText>
-        ) : daySlots.length === 0 ? (
-          <ThemedText style={styles.empty}>No classes on {DAY_NAMES[selectedDay]}.</ThemedText>
+        <SectionHeader title="Upcoming" actionLabel="Add" onAction={() => router.push('/reminder/new')} />
+        {isUpcomingLoading ? (
+          <ActivityIndicator color={palette.teal} />
+        ) : upcoming.length === 0 ? (
+          <EmptyState
+            title="No upcoming tests"
+            body="Add a CT, quiz or assignment date to get a reminder a few days before."
+          />
         ) : (
-          daySlots.map((slot) => (
-            <View key={slot.id} style={[styles.slot, { borderColor: Colors.icon }]}>
-              <View style={styles.slotRow}>
-                <View style={styles.slotInfo}>
-                  <ThemedText type="defaultSemiBold">{slot.courseLabel}</ThemedText>
-                  <ThemedText style={styles.meta}>
-                    {slot.startTime} – {slot.endTime}
-                    {slot.room ? ` · ${slot.room}` : ''}
-                  </ThemedText>
-                </View>
-                <Pressable onPress={() => handleDelete(slot.id)} hitSlop={8}>
-                  <SvgIcon size={20} name="trash" color="#e5484d" />
-                </Pressable>
+          <Card dense style={styles.list}>
+            {upcoming.map((r, index) => (
+              <View key={r.id}>
+                {index > 0 && <Divider />}
+                <ReminderRow
+                  name={r.name}
+                  type={r.type}
+                  date={r.date}
+                  courseCode={r.courseCode}
+                  reminderLine={buildReminderLine(r, prefs)}
+                  onPress={() =>
+                    router.push({ pathname: '/reminder/new', params: { courseId: r.courseId, reminderId: r.id } })
+                  }
+                  onDelete={() => handleDeleteUpcoming(r.id, r.name, r.courseId)}
+                />
               </View>
-            </View>
-          ))
+            ))}
+          </Card>
         )}
       </ScrollView>
     </Wrapper>
@@ -141,70 +177,25 @@ export default function RoutineScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
+  content: { paddingBottom: 104 },
+  week: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+  },
+  day: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 8,
-  },
-  add: {
-    padding: 4,
-  },
-  days: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  content: {
-    paddingVertical: 20,
-    height: '120%',
-  },
-  dayTitle: {
-    marginBottom: 12,
-    marginTop: 20,
-  },
-  upcomingHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  upcomingEmpty: {
-    opacity: 0.6,
-    fontSize: 13,
-    marginBottom: 4,
-  },
-  reminder: {
-    opacity: 0.75,
-    fontSize: 13,
-    color: Colors.tint,
-  },
-  empty: {
-    opacity: 0.7,
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  slot: {
-    borderWidth: 1,
-    borderLeftWidth: 5,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-  },
-  slotRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  slotInfo: {
-    flex: 1,
+    paddingVertical: 8,
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
     gap: 2,
   },
-  meta: {
-    opacity: 0.6,
-    fontSize: 14,
-  },
+  dayLabel: { fontSize: 12 },
+  dayCount: { fontSize: 16, lineHeight: 20 },
+  list: { paddingVertical: 0 },
+  slot: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12 },
+  time: { width: 70 },
+  rule: { width: 2, alignSelf: 'stretch', borderRadius: 1 },
+  slotText: { flex: 1, gap: 1 },
 });

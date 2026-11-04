@@ -13,15 +13,6 @@ export function courseProgress(assessments: Assessment[], attendanceMark: number
   return { obtained, max, percent };
 }
 
-export function weightedPercent(assessments: Assessment[]): number {
-  if (assessments.length === 0) return 0;
-  const total = assessments.reduce(
-    (sum, a) => sum + (a.marksObtained / a.maxMarks) * a.weight,
-    0,
-  );
-  return Math.min(100, Math.round(total));
-}
-
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
@@ -39,7 +30,8 @@ export function CtAverage(assessments: Assessment[]): number {
   if (assessments.length === 0) return 0;
   const total = assessments
     .filter((a) => a.type === 'ct')
-    .sort((a, b) => a.marksObtained - b.marksObtained)
+    // Best three CTs count: highest marks first.
+    .sort((a, b) => b.marksObtained - a.marksObtained)
     .slice(0, 3)
     .reduce((sum, a) => sum + a.marksObtained, 0);
   // const max = assessments.filter((a) => a.type === 'ct').slice(0, 3).reduce((sum, a) => sum + a.maxMarks, 0);

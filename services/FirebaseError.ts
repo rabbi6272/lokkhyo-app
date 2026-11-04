@@ -24,6 +24,22 @@ export function FirebaseError(error: unknown): string {
         return "Sign-in was cancelled.";
     } else if (msg.includes("missing ID token")) {
         return "Google sign-in failed. Please try again.";
+    } else if (msg.includes("UNAUTHENTICATED")) {
+        return "Your session has expired. Please sign in again.";
+    } else if (msg.includes("NETWORK_ERROR") || msg.includes("TIMEOUT")) {
+        return "Can't reach the server. Check your connection and try again.";
+    } else if (msg.includes("RATE_LIMITED")) {
+        return "Too many attempts. Please wait a moment and try again.";
+    } else if (msg.includes("VALIDATION_ERROR") || msg.includes("BAD_REQUEST")) {
+        // The server names the offending field; show it so the user knows what to fix.
+        const field = (error as { details?: { fields?: { path: string; message: string }[] } }).details?.fields?.[0];
+        return field ? `${field.path}: ${field.message}` : "Some details were invalid. Please check and try again.";
+    } else if (msg.includes("CONFLICT")) {
+        return "That already exists.";
+    } else if (msg.includes("NOT_FOUND")) {
+        return "That item no longer exists.";
+    } else if (msg.includes("INTERNAL_ERROR")) {
+        return "Something went wrong on our side. Please try again.";
     } else {
         return "An unknown error occurred.";
     }

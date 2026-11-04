@@ -13,13 +13,4 @@ export const ASSESSMENT_TYPE_LABELS: Record<string, string> = {
   labFinal: 'Lab Final',
 };
 
-export const TARGET_TYPES = ['gpa', 'cgpa', 'attendance', 'custom'] as const;
-
-export const TARGET_TYPE_LABELS: Record<string, string> = {
-  gpa: 'GPA',
-  cgpa: 'CGPA',
-  attendance: 'Attendance',
-  custom: 'Custom',
-};
-
 export const MAX_GPA = 4.0;

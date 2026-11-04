@@ -1,56 +1,41 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
-import type { UserProfile } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
-import { createProfile, deleteProfile, getProfile, updateProfile } from '@/services/Profile';
+import { useDeleteProfile, useProfileQuery, useRemovePhoto, useUpdatePhoto, useUpdateProfile } from '@/services/profile/profile.hooks';
+import { toUserProfile } from '@/services/profile/profile.services';
 
+/**
+ * The student's profile, as the screens see it.
+ *
+ * A thin adapter over `services/profile`: it resolves the signed-in uid,
+ * reads the shared `GET /me` cache entry (the one the session bootstrap
+ * warms), and maps the wire DTO to the `UserProfile` domain type. The screen
+ * only ever deals in `UserProfile`, never in server field names.
+ *
+ * The mapping is memoised on the cached DTO so the returned object keeps a
+ * stable identity — otherwise the edit screen's "seed the form" effect would
+ * refire on every render and clobber what the student is typing.
+ */
 export function useProfile() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ['profile'],
-    queryFn: () => (user ? getProfile(user.uid) : null),
-    enabled: !!user,
-  });
-
-  const updateProfileMutation = useMutation({
-    mutationFn: (data: Partial<UserProfile>) => {
-      if (!user) throw new Error('Not authenticated');
-      return updateProfile(user.uid, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-
-  const createProfileMutation = useMutation({
-    mutationFn: (data: Partial<UserProfile>) => {
-      if (!user) throw new Error('Not authenticated');
-      return createProfile(user.uid, data);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
-
-  const deleteProfileMutation = useMutation({
-    mutationFn: () => {
-      if (!user) throw new Error('Not authenticated');
-      return deleteProfile(user.uid);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-    },
-  });
+  const query = useProfileQuery(user?.uid);
+  const profileData = useMemo(
+    () => (query.data ? toUserProfile(query.data) : null),
+    [query.data],
+  );
 
   return {
-    profileData: query.data,
+    profileData,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
-    updateProfile: updateProfileMutation,
-    createProfile: createProfileMutation,
-    deleteProfile: deleteProfileMutation,
+    /** `PATCH /me`, in the app's own vocabulary. */
+    updateProfile: useUpdateProfile(user?.uid),
+    /** `PUT /me/photo` — replace the profile photo. */
+    updatePhoto: useUpdatePhoto(user?.uid),
+    /** `DELETE /me/photo` — remove the profile photo. */
+    removePhoto: useRemovePhoto(user?.uid),
+    /** `DELETE /me` — purge the server record (the settings screen runs this first, then Firebase deletion). */
+    deleteProfile: useDeleteProfile(user?.uid),
   };
 }

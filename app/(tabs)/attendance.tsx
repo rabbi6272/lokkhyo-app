@@ -1,20 +1,27 @@
 import { useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
+import { ATTENDANCE_MARK_LINE, AttendanceMeter } from '@/components/AttendanceMeter';
 import { ThemedText } from '@/components/ThemedText';
+import { Card, Divider } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
-import { ProgressBar } from '@/components/ui/ProgressBar';
-import { Wrapper } from '@/components/ui/Wrapper';
+import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
+import { ProgressBar } from '@/components/ui/ProgressBar';
+import { SectionHeader } from '@/components/ui/SectionHeader';
+import { Wrapper } from '@/components/ui/Wrapper';
 import { UnifiedAttendanceCalendar } from '@/components/UnifiedAttendanceCalendar';
+import { Space } from '@/constants/theme';
+import { useTheme } from '@/providers/theme-provider';
 import { useAllCoursesAttendance, useMarkAttendance, type DaySession } from '@/hooks/useAllCoursesAttendance';
-import { addDays, todayStr } from '@/lib/attendance';
+import { EXAM_ELIGIBILITY_THRESHOLD, todayStr } from '@/lib/attendance';
 import { formatTime12h } from '@/lib/routine';
 import { parseTime } from '@/lib/validate';
 
 export default function AttendanceScreen() {
   const { courseAttendance, sessionsByDate, overall, isLoading } = useAllCoursesAttendance();
   const markAttendance = useMarkAttendance();
+  const { palette, statusColor } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   const today = todayStr();
@@ -54,57 +61,79 @@ export default function AttendanceScreen() {
     [courseAttendance],
   );
 
+  const overallTone = statusColor(overall.percent, EXAM_ELIGIBILITY_THRESHOLD, ATTENDANCE_MARK_LINE - EXAM_ELIGIBILITY_THRESHOLD);
+
   return (
-    <Wrapper style={styles.safe}>
+    <Wrapper>
       <PageHeader title="Attendance" />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {isLoading && <ThemedText style={styles.meta}>Loading attendance…</ThemedText>}
+        {isLoading && <ActivityIndicator color={palette.teal} style={styles.loading} />}
 
-        <View style={styles.overviewCard}>
-          <View style={styles.overviewRow}>
-            <ThemedText type="subtitle">Overall</ThemedText>
-            <ThemedText style={styles.overviewPercent}>{overall.percent}%</ThemedText>
-          </View>
-          <ProgressBar percent={overall.percent} color={overall.percent < 50 ? '#dc2626' : undefined} />
-          {overall.atRiskCount > 0 && (
-            <ThemedText style={styles.atRiskText}>
-              {overall.atRiskCount} course{overall.atRiskCount > 1 ? 's' : ''} below exam eligibility.
-            </ThemedText>
-          )}
-        </View>
-
-        {pendingToday.length > 0 && (
-          <View style={styles.pendingCard}>
-            <ThemedText type="subtitle" style={styles.pendingTitle}>Mark today&apos;s attendance</ThemedText>
-            {pendingToday.map((d) => (
-              <View key={`${d.courseId}_${d.session.slotId}`} style={styles.pendingRow}>
-                <View style={styles.pendingInfo}>
-                  <ThemedText type="defaultSemiBold">{d.courseCode}</ThemedText>
-                  <ThemedText style={styles.meta}>
-                    {formatTime12h(d.session.startTime)} – {formatTime12h(d.session.endTime)}
-                  </ThemedText>
-                </View>
-                <View style={styles.pendingChips}>
-                  {(['present', 'absent', 'cancelled'] as const).map((status) => (
-                    <Chip
-                      key={status}
-                      label={status === 'present' ? 'Present' : status === 'absent' ? 'Absent' : 'Cancelled'}
-                      selected={false}
-                      onPress={() => markAttendance.mutate({ courseId: d.courseId, date: d.session.date, slotId: d.session.slotId, status })}
-                    />
-                  ))}
-                </View>
-              </View>
-            ))}
-          </View>
-        )}
-
-        {courseAttendance.length === 0 ? (
-          <ThemedText style={styles.meta}>Add a course and its routine to start tracking attendance.</ThemedText>
+        {courseAttendance.length === 0 && !isLoading ? (
+          <EmptyState
+            title="Nothing to track yet"
+            body="Add a course and its weekly classes, and each class will show up here to mark."
+          />
         ) : (
           <>
+            <Card style={styles.overview}>
+              <ThemedText type="eyebrow">OVERALL</ThemedText>
+              <View style={styles.overviewRow}>
+                <ThemedText type="figure" color={overall.held > 0 ? overallTone.fg : palette.faint}>
+                  {overall.held > 0 ? `${overall.percent}%` : '—'}
+                </ThemedText>
+                <ThemedText type="caption" style={styles.overviewNote}>
+                  {overall.held > 0 ? `of ${overall.held} classes held` : 'No classes held yet'}
+                </ThemedText>
+              </View>
+              {overall.held > 0 && (
+                <ProgressBar percent={overall.percent} color={overallTone.fg} target={ATTENDANCE_MARK_LINE} />
+              )}
+              {overall.atRiskCount > 0 && (
+                <ThemedText type="caption" color={palette.risk}>
+                  {overall.atRiskCount} {overall.atRiskCount > 1 ? 'courses are' : 'course is'} below exam eligibility.
+                </ThemedText>
+              )}
+            </Card>
+
+            {pendingToday.length > 0 && (
+              <Card style={[styles.pending, { borderColor: palette.warnSoft }]}>
+                <ThemedText type="eyebrow" color={palette.warn}>
+                  MARK TODAY · {pendingToday.length} {pendingToday.length === 1 ? 'CLASS' : 'CLASSES'}
+                </ThemedText>
+                {pendingToday.map((d, index) => (
+                  <View key={`${d.courseId}_${d.session.slotId}`} style={styles.pendingRow}>
+                    {index > 0 && <Divider />}
+                    <View style={styles.pendingHead}>
+                      <ThemedText type="defaultSemiBold">{d.courseCode}</ThemedText>
+                      <ThemedText type="caption">
+                        {formatTime12h(d.session.startTime)} – {formatTime12h(d.session.endTime)}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.chips}>
+                      {(['present', 'absent', 'cancelled'] as const).map((status) => (
+                        <Chip
+                          key={status}
+                          label={status === 'present' ? 'Present' : status === 'absent' ? 'Absent' : 'Cancelled'}
+                          selected={false}
+                          onPress={() =>
+                            markAttendance.mutate({
+                              courseId: d.courseId,
+                              date: d.session.date,
+                              slotId: d.session.slotId,
+                              status,
+                            })
+                          }
+                        />
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            )}
+
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterRow}>
-              <Chip label="All" selected={!selectedCourseId} onPress={() => setSelectedCourseId(null)} />
+              <Chip label="All courses" selected={!selectedCourseId} onPress={() => setSelectedCourseId(null)} />
               {courseAttendance.map(({ course }) => (
                 <Chip
                   key={course.id}
@@ -121,19 +150,15 @@ export default function AttendanceScreen() {
               onMark={(courseId, date, slotId, status) => markAttendance.mutate({ courseId, date, slotId, status })}
             />
 
-            <ThemedText type="subtitle" style={styles.breakdownTitle}>By course</ThemedText>
-            {sortedCourses.map(({ course, stats }) => (
-              <View key={course.id} style={styles.courseRow}>
-                <View style={styles.courseRowTop}>
-                  <ThemedText type="defaultSemiBold">{course.code}</ThemedText>
-                  <ThemedText style={[styles.coursePercent, !stats.eligible && stats.held > 0 && styles.coursePercentAtRisk]}>
-                    {stats.held > 0 ? `${stats.percent}%` : 'No data'}
-                  </ThemedText>
+            <SectionHeader title="By course" />
+            <Card dense style={styles.list}>
+              {sortedCourses.map(({ course, stats }, index) => (
+                <View key={course.id}>
+                  {index > 0 && <Divider />}
+                  <AttendanceMeter code={course.code} title={course.title} stats={stats} />
                 </View>
-                <ProgressBar percent={stats.percent} color={!stats.eligible && stats.held > 0 ? '#dc2626' : undefined} />
-                <ThemedText style={styles.meta}>mark {stats.mark}/10 · {stats.present} present · {stats.absent} absent</ThemedText>
-              </View>
-            ))}
+              ))}
+            </Card>
           </>
         )}
       </ScrollView>
@@ -142,81 +167,15 @@ export default function AttendanceScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-  },
-  content: {
-    paddingVertical: 20,
-  },
-  overviewCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    gap: 8,
-  },
-  overviewRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  overviewPercent: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  atRiskText: {
-    color: '#b91c1c',
-    fontSize: 13,
-  },
-  pendingCard: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    gap: 12,
-    marginBottom: 16,
-  },
-  pendingTitle: {
-    marginBottom: 2,
-  },
-  pendingRow: {
-    gap: 8,
-  },
-  pendingInfo: {
-    gap: 2,
-  },
-  pendingChips: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  filterRow: {
-    gap: 8,
-    marginBottom: 16,
-  },
-  breakdownTitle: {
-    marginBottom: 12,
-  },
-  courseRow: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 10,
-    gap: 8,
-  },
-  courseRowTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  coursePercent: {
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  coursePercentAtRisk: {
-    color: '#dc2626',
-  },
-  meta: {
-    opacity: 0.6,
-    fontSize: 13,
-  },
+  content: { paddingBottom: Space.xxl + 72 },
+  loading: { marginVertical: Space.lg },
+  overview: { gap: Space.sm, marginBottom: Space.md },
+  overviewRow: { flexDirection: 'row', alignItems: 'baseline', gap: Space.sm },
+  overviewNote: { flexShrink: 1 },
+  pending: { gap: Space.sm, marginBottom: Space.md, borderWidth: 1 },
+  pendingRow: { gap: Space.sm },
+  pendingHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', paddingTop: Space.xs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Space.sm },
+  filterRow: { gap: Space.sm, marginTop: Space.sm, marginBottom: Space.md },
+  list: { paddingVertical: 0 },
 });

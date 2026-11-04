@@ -1,47 +1,117 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Modal, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { BackStep } from '@/components/ui/BackStep';
+import { BlurredModal } from '@/components/ui/AppBlur';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { ThemedText } from '@/components/ThemedText';
+import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
-import { Colors } from '@/constants/theme';
 import { useAuth } from '@/providers/auth-provider';
+import { useTheme, useThemeMode } from '@/providers/theme-provider';
 import { useProfile } from '@/hooks/useUserProfile';
-import { deleteAccount, signOut } from '@/services/Auth';
+import { deleteAccount, signOut } from '@/services/auth/auth.services';
 import {
-  DEFAULT_REMINDER_HOUR,
-  DEFAULT_REMINDER_MINUTE,
-  getNotificationPreferences,
+  notificationPrefsQuery,
+  setAssessmentReminderTime,
   setAssessmentRemindersEnabled,
+  setAttendanceDigestEnabled,
+  setAttendanceRiskEnabled,
   setDailyRoutineEnabled,
-  setReminderTime,
+  setEveningTime,
+  setMorningTime,
+  type NotificationPreferences,
 } from '@/lib/notificationPreferences';
 import { formatTime12h } from '@/lib/routine';
 import { cancelRoutineNotifications, syncRoutineNotifications } from '@/services/notifications/routineNotifications';
-import {
-  cancelAssessmentReminders,
-  getUpcomingAssessmentRemindersForUser,
-  syncAssessmentReminders,
-} from '@/services/notifications/assessmentReminders';
+import { cancelAssessmentReminders, syncAssessmentReminders } from '@/services/notifications/assessmentReminders';
+import { getUpcomingAssessmentRemindersForUser } from '@/services/notifications/upcomingReminders';
 
-const REMINDER_TIME_OPTIONS: { hour: number; minute: number }[] = [
-  { hour: 6, minute: 0 },
-  { hour: 6, minute: 30 },
-  { hour: 7, minute: 0 },
-  { hour: 7, minute: 30 },
-  { hour: 8, minute: 0 },
-  { hour: 8, minute: 30 },
-  { hour: 9, minute: 0 },
-  { hour: 9, minute: 30 },
-  { hour: 10, minute: 0 },
-];
+/**
+ * The attendance digest and its risk alerts are server pushes, and the server
+ * only sends those to Android — on iOS these rows would do nothing at all, so
+ * they are hidden rather than shown inert.
+ */
+const SHOW_ATTENDANCE_ROWS = Platform.OS === 'android';
+
+const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => hour);
+const MINUTE_STEP = 5;
+const MINUTE_OPTIONS = Array.from({ length: 60 / MINUTE_STEP }, (_, i) => i * MINUTE_STEP);
+
+type TimeTarget = 'morning' | 'evening' | 'assessment';
+
+const TIME_PICKER_COPY: Record<TimeTarget, { title: string; body: string }> = {
+  morning: {
+    title: 'Morning time',
+    body: "When the morning summary of today's classes arrives.",
+  },
+  evening: {
+    title: 'Attendance time',
+    body: "When you're nudged about classes you haven't marked yet.",
+  },
+  assessment: {
+    title: 'Assessment time',
+    body: 'The time of day each daily assessment reminder arrives.',
+  },
+};
 
 function toHHMM(hour: number, minute: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+}
+
+/**
+ * Two scrollable columns of pills — an hour and a minute — so a reminder time
+ * can be any moment in the day rather than the nine morning slots the old list
+ * offered. Built from the existing Chip rather than a native date picker, so
+ * it adds no dependency and needs no dev-client rebuild.
+ */
+function TimePicker({
+  hour,
+  minute,
+  onSelect,
+}: {
+  hour: number;
+  minute: number;
+  onSelect: (hour: number, minute: number) => void;
+}) {
+  return (
+    <View style={styles.pickerWrap}>
+      <ThemedText type="title" style={styles.pickerReadout}>
+        {formatTime12h(toHHMM(hour, minute))}
+      </ThemedText>
+      <View style={styles.pickerColumns}>
+        <View style={styles.pickerColumn}>
+          <ThemedText style={styles.pickerHeading}>Hour</ThemedText>
+          <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
+            {HOUR_OPTIONS.map((h) => (
+              <Chip
+                key={h}
+                label={String(h).padStart(2, '0')}
+                selected={h === hour}
+                onPress={() => onSelect(h, minute)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+        <View style={styles.pickerColumn}>
+          <ThemedText style={styles.pickerHeading}>Minute</ThemedText>
+          <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
+            {MINUTE_OPTIONS.map((m) => (
+              <Chip
+                key={m}
+                label={String(m).padStart(2, '0')}
+                selected={m === minute}
+                onPress={() => onSelect(hour, m)}
+              />
+            ))}
+          </ScrollView>
+        </View>
+      </View>
+    </View>
+  );
 }
 
 export default function SettingsScreen() {
@@ -49,44 +119,58 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { deleteProfile } = useProfile();
+  const { mode, setMode } = useThemeMode();
+  const { palette } = useTheme();
 
-  const [dailyRoutineEnabled, setDailyRoutineState] = useState(true);
-  const [assessmentRemindersEnabled, setAssessmentRemindersState] = useState(true);
-  const [reminderHour, setReminderHourState] = useState(DEFAULT_REMINDER_HOUR);
-  const [reminderMinute, setReminderMinuteState] = useState(DEFAULT_REMINDER_MINUTE);
-  const [prefsLoaded, setPrefsLoaded] = useState(false);
+  const cardStyle = [
+    styles.listCard,
+    {
+      backgroundColor: palette.surface,
+      borderColor: palette.line,
+      borderWidth: StyleSheet.hairlineWidth,
+    },
+  ];
+  const modalContentStyle = [styles.modalContent, { backgroundColor: palette.surface }];
+
+  const queryClient = useQueryClient();
+  const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
+  const prefsLoaded = prefs !== null;
 
   const [signoutModalVisible, setSignoutModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  const [timeModalVisible, setTimeModalVisible] = useState(false);
+  const [editingTime, setEditingTime] = useState<TimeTarget | null>(null);
+  const [pendingHour, setPendingHour] = useState(7);
+  const [pendingMinute, setPendingMinute] = useState(0);
   const [deleting, setDeleting] = useState(false);
 
   const { data: upcomingData, isLoading: isUpcomingLoading } = useQuery({
     queryKey: ['upcomingAssessmentReminders', user?.uid],
-    queryFn: () => getUpcomingAssessmentRemindersForUser(user!.uid),
-    enabled: !!user && assessmentRemindersEnabled && prefsLoaded,
+    queryFn: () => getUpcomingAssessmentRemindersForUser(queryClient, user!.uid),
+    enabled: !!user && (prefs?.assessmentRemindersEnabled ?? false),
   });
 
   const upcomingCount = upcomingData?.upcoming.length;
   const assessmentReminderDescription =
-    assessmentRemindersEnabled && !isUpcomingLoading && upcomingCount !== undefined
+    prefs?.assessmentRemindersEnabled && !isUpcomingLoading && upcomingCount !== undefined
       ? upcomingCount > 0
-        ? `Reminds you 2–5 days before · ${upcomingCount} upcoming scheduled`
-        : 'Reminds you 2–5 days before · nothing upcoming'
-      : 'Get notified before CTs, quizzes & assignments';
+        ? `Reminds you daily, starting 2–5 days before · ${upcomingCount} upcoming scheduled`
+        : 'Reminds you daily, starting 2–5 days before · nothing upcoming'
+      : 'Get notified daily before CTs, quizzes & assignments';
 
   useEffect(() => {
-    getNotificationPreferences().then((prefs) => {
-      setDailyRoutineState(prefs.dailyRoutineEnabled);
-      setAssessmentRemindersState(prefs.assessmentRemindersEnabled);
-      setReminderHourState(prefs.reminderHour);
-      setReminderMinuteState(prefs.reminderMinute);
-      setPrefsLoaded(true);
-    });
-  }, []);
+    queryClient.fetchQuery(notificationPrefsQuery(user?.uid)).then(setPrefs);
+  }, [queryClient, user?.uid]);
+
+  // Mirror edits into the shared query so other screens see them without refetching.
+  const updatePrefs = (patch: Partial<NotificationPreferences>) => {
+    setPrefs((current) => (current ? { ...current, ...patch } : current));
+    queryClient.setQueryData<NotificationPreferences>(notificationPrefsQuery(user?.uid).queryKey, (current) =>
+      current ? { ...current, ...patch } : current,
+    );
+  };
 
   const handleToggleDailyRoutine = async (value: boolean) => {
-    setDailyRoutineState(value);
+    updatePrefs({ dailyRoutineEnabled: value });
     await setDailyRoutineEnabled(value);
     if (!user) return;
     if (value) {
@@ -97,7 +181,7 @@ export default function SettingsScreen() {
   };
 
   const handleToggleAssessmentReminders = async (value: boolean) => {
-    setAssessmentRemindersState(value);
+    updatePrefs({ assessmentRemindersEnabled: value });
     await setAssessmentRemindersEnabled(value);
     if (!user) return;
     if (value) {
@@ -107,16 +191,60 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleSelectReminderTime = async (hour: number, minute: number) => {
-    setReminderHourState(hour);
-    setReminderMinuteState(minute);
-    setTimeModalVisible(false);
-    await setReminderTime(hour, minute);
+  // The attendance digest and risk alerts are server-side: there is nothing to
+  // reschedule on the device, only the preference to persist.
+  const handleToggleAttendanceDigest = async (value: boolean) => {
+    updatePrefs({ attendanceDigestEnabled: value });
+    await setAttendanceDigestEnabled(value);
+  };
+
+  const handleToggleAttendanceRisk = async (value: boolean) => {
+    updatePrefs({ attendanceRiskEnabled: value });
+    await setAttendanceRiskEnabled(value);
+  };
+
+  const handleOpenTimePicker = (target: TimeTarget) => {
+    if (!prefs) return;
+    setEditingTime(target);
+    setPendingHour(
+      target === 'morning' ? prefs.morningHour : target === 'evening' ? prefs.eveningHour : prefs.assessmentHour,
+    );
+    setPendingMinute(
+      target === 'morning'
+        ? prefs.morningMinute
+        : target === 'evening'
+          ? prefs.eveningMinute
+          : prefs.assessmentMinute,
+    );
+  };
+
+  const handleConfirmTime = async () => {
+    const target = editingTime;
+    const hour = pendingHour;
+    const minute = pendingMinute;
+    setEditingTime(null);
+    if (!target) return;
+
+    updatePrefs(
+      target === 'morning'
+        ? { morningHour: hour, morningMinute: minute }
+        : target === 'evening'
+          ? { eveningHour: hour, eveningMinute: minute }
+          : { assessmentHour: hour, assessmentMinute: minute },
+    );
+
+    // One write per confirm, not one per pill tapped.
+    if (target === 'morning') await setMorningTime(hour, minute);
+    if (target === 'evening') await setEveningTime(hour, minute);
+    if (target === 'assessment') await setAssessmentReminderTime(hour, minute);
+
     if (!user) return;
-    await Promise.allSettled([
-      dailyRoutineEnabled ? syncRoutineNotifications(user.uid) : Promise.resolve(),
-      assessmentRemindersEnabled ? syncAssessmentReminders(user.uid) : Promise.resolve(),
-    ]);
+    // These times are read by the server's dispatcher; the sync only clears any
+    // local schedules left by an older build.
+    if (target === 'morning') await syncRoutineNotifications(user.uid);
+    if (target === 'assessment' && prefs?.assessmentRemindersEnabled) {
+      await syncAssessmentReminders(user.uid);
+    }
   };
 
   const handleDeleteAccount = async () => {
@@ -143,107 +271,157 @@ export default function SettingsScreen() {
       <BackStep title="Settings" onBack={() => navigation.goBack()} />
       <Wrapper noTopMargin>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
             <MenuRow label="Edit Profile" onPress={() => router.push('/profile/edit')} last />
           </View>
 
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
+            <View style={styles.themeSection}>
+              <ThemedText style={styles.menuLabel}>Appearance</ThemedText>
+              <View style={styles.themeChips}>
+                {(['system', 'light', 'dark'] as const).map((m) => (
+                  <Chip
+                    key={m}
+                    label={m === 'system' ? 'System' : m === 'light' ? 'Light' : 'Dark'}
+                    selected={mode === m}
+                    onPress={() => setMode(m)}
+                  />
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <View style={cardStyle}>
             <ToggleRow
               label="Daily routine reminder"
               description="Get a morning summary of today's classes"
-              value={dailyRoutineEnabled}
+              value={prefs?.dailyRoutineEnabled ?? true}
               onValueChange={handleToggleDailyRoutine}
               disabled={!prefsLoaded}
             />
+            <MenuRow
+              label="Morning time"
+              value={formatTime12h(toHHMM(prefs?.morningHour ?? 7, prefs?.morningMinute ?? 0))}
+              onPress={() => handleOpenTimePicker('morning')}
+            />
+
+            {SHOW_ATTENDANCE_ROWS && (
+              <>
+                <ToggleRow
+                  label="Attendance reminder"
+                  description="Nudge me when today's classes are still unmarked"
+                  value={prefs?.attendanceDigestEnabled ?? true}
+                  onValueChange={handleToggleAttendanceDigest}
+                  disabled={!prefsLoaded}
+                />
+                <MenuRow
+                  label="Attendance time"
+                  value={formatTime12h(toHHMM(prefs?.eveningHour ?? 20, prefs?.eveningMinute ?? 0))}
+                  onPress={() => handleOpenTimePicker('evening')}
+                />
+                <ToggleRow
+                  label="Attendance risk alerts"
+                  description="Warn me when a course drops below the eligibility line"
+                  value={prefs?.attendanceRiskEnabled ?? true}
+                  onValueChange={handleToggleAttendanceRisk}
+                  disabled={!prefsLoaded}
+                />
+              </>
+            )}
+
             <ToggleRow
               label="Assessment reminders"
               description={assessmentReminderDescription}
-              value={assessmentRemindersEnabled}
+              value={prefs?.assessmentRemindersEnabled ?? true}
               onValueChange={handleToggleAssessmentReminders}
               disabled={!prefsLoaded}
+              last={!SHOW_ATTENDANCE_ROWS}
             />
             <MenuRow
-              label="Reminder time"
-              value={formatTime12h(toHHMM(reminderHour, reminderMinute))}
-              onPress={() => setTimeModalVisible(true)}
+              label="Assessment time"
+              value={formatTime12h(toHHMM(prefs?.assessmentHour ?? 7, prefs?.assessmentMinute ?? 0))}
+              onPress={() => handleOpenTimePicker('assessment')}
               last
             />
           </View>
 
-          <View style={styles.listCard}>
+          <View style={cardStyle}>
             <Pressable style={styles.menuRow} onPress={() => setDeleteModalVisible(true)}>
-              <ThemedText type='defaultSemiBold' style={styles.dangerLabel}>Delete Account</ThemedText>
+              <ThemedText type='defaultSemiBold' style={[styles.dangerLabel, { color: palette.risk }]}>Delete Account</ThemedText>
             </Pressable>
           </View>
 
           <ThemedText style={styles.versionText}>App version 1.0.0</ThemedText>
 
-          <Modal visible={signoutModalVisible} backdropColor="rgba(0, 0, 0, 0.4)" animationType="fade">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  Sign out?
-                </ThemedText>
-                <ThemedText>
-                  Are you sure you want to sign out? You will need to log in again to access your account.
-                </ThemedText>
-                <View style={styles.modalButtons}>
-                  <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
-                  <Button
-                    title="Sign Out"
-                    variant="destructive"
-                    onPress={async () => {
-                      try {
-                        await signOut();
-                      } catch (error) {
-                        Alert.alert('Error', 'Failed to sign out. Please try again.');
-                      }
-                    }}
-                  />
-                </View>
+          <BlurredModal
+            visible={signoutModalVisible}
+            onClose={() => setSignoutModalVisible(false)}
+          >
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Sign out?
+              </ThemedText>
+              <ThemedText>
+                Are you sure you want to sign out? You will need to log in again to access your account.
+              </ThemedText>
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
+                <Button
+                  title="Sign Out"
+                  variant="destructive"
+                  onPress={async () => {
+                    try {
+                      await signOut();
+                    } catch {
+                      Alert.alert('Error', 'Failed to sign out. Please try again.');
+                    }
+                  }}
+                />
               </View>
             </View>
-          </Modal>
+          </BlurredModal>
 
-          <Modal visible={timeModalVisible} backdropColor="rgba(0, 0, 0, 0.4)" animationType="fade" onRequestClose={() => setTimeModalVisible(false)}>
-            <Pressable style={styles.modalOverlay} onPress={() => setTimeModalVisible(false)}>
-              <Pressable style={styles.modalContent} onPress={(e) => e.stopPropagation()}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  Reminder time
-                </ThemedText>
-                <ThemedText>
-                  Choose when daily routine and assessment reminders should be sent.
-                </ThemedText>
-                <View style={styles.timeOptions}>
-                  {REMINDER_TIME_OPTIONS.map((option) => (
-                    <Chip
-                      key={`${option.hour}-${option.minute}`}
-                      label={formatTime12h(toHHMM(option.hour, option.minute))}
-                      selected={reminderHour === option.hour && reminderMinute === option.minute}
-                      onPress={() => handleSelectReminderTime(option.hour, option.minute)}
-                    />
-                  ))}
-                </View>
-              </Pressable>
-            </Pressable>
-          </Modal>
-
-          <Modal visible={deleteModalVisible} backdropColor="rgba(0, 0, 0, 0.4)" animationType="fade">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <ThemedText type="title" style={styles.modalTitle}>
-                  Delete account?
-                </ThemedText>
-                <ThemedText>
-                  This permanently deletes your profile and signs you out. This action cannot be undone.
-                </ThemedText>
-                <View style={styles.modalButtons}>
-                  <Button title="Cancel" variant="ghost" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
-                  <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
-                </View>
+          <BlurredModal
+            visible={editingTime !== null}
+            onClose={() => setEditingTime(null)}
+          >
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                {editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
+              </ThemedText>
+              <ThemedText>{editingTime ? TIME_PICKER_COPY[editingTime].body : ''}</ThemedText>
+              <TimePicker
+                hour={pendingHour}
+                minute={pendingMinute}
+                onSelect={(hour, minute) => {
+                  setPendingHour(hour);
+                  setPendingMinute(minute);
+                }}
+              />
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="ghost" onPress={() => setEditingTime(null)} />
+                <Button title="Save" onPress={handleConfirmTime} />
               </View>
             </View>
-          </Modal>
+          </BlurredModal>
+
+          <BlurredModal
+            visible={deleteModalVisible}
+            onClose={() => setDeleteModalVisible(false)}
+          >
+            <View style={modalContentStyle}>
+              <ThemedText type="title" style={styles.modalTitle}>
+                Delete account?
+              </ThemedText>
+              <ThemedText>
+                This permanently deletes your profile and signs you out. This action cannot be undone.
+              </ThemedText>
+              <View style={styles.modalButtons}>
+                <Button title="Cancel" variant="ghost" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
+                <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
+              </View>
+            </View>
+          </BlurredModal>
         </ScrollView>
       </Wrapper>
     </>
@@ -261,12 +439,13 @@ function MenuRow({
   onPress: () => void;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
-    <Pressable style={[styles.menuRow, !last && styles.rowDivider]} onPress={onPress}>
+    <Pressable style={[styles.menuRow, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]} onPress={onPress}>
       <ThemedText style={styles.menuLabel}>{label}</ThemedText>
       <View style={styles.menuRowRight}>
-        {value && <ThemedText style={styles.menuValue}>{value}</ThemedText>}
-        <ThemedText style={styles.chevron}>{'>'}</ThemedText>
+        {value && <ThemedText style={[styles.menuValue, { color: palette.muted }]}>{value}</ThemedText>}
+        <SvgIcon name="chevron" size={16} color={palette.faint} />
       </View>
     </Pressable>
   );
@@ -287,19 +466,20 @@ function ToggleRow({
   disabled?: boolean;
   last?: boolean;
 }) {
+  const { palette } = useTheme();
   return (
-    <View style={[styles.menuRow, !last && styles.rowDivider]}>
+    <View style={[styles.menuRow, !last && [styles.rowDivider, { borderBottomColor: palette.line }]]}>
       <View style={styles.toggleTextWrap}>
         <ThemedText style={styles.menuLabel}>{label}</ThemedText>
-        <ThemedText style={styles.toggleDescription}>{description}</ThemedText>
+        <ThemedText style={[styles.toggleDescription, { color: palette.muted }]}>{description}</ThemedText>
       </View>
       <Switch
         value={value}
         onValueChange={onValueChange}
         disabled={disabled}
-        trackColor={{ true: "#e5e5e5", false: '#e5e5e5' }}
-        thumbColor={Colors.tint}
-        style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }], transitionDuration: '250ms' }}
+        trackColor={{ true: palette.teal, false: palette.line }}
+        thumbColor="#FFFFFF"
+        style={{ transform: [{ scaleX: 0.9 }, { scaleY: 0.9 }] }}
       />
     </View>
   );
@@ -307,10 +487,17 @@ function ToggleRow({
 
 const styles = StyleSheet.create({
   listCard: {
-    backgroundColor: '#fff',
     borderRadius: 16,
     marginBottom: 20,
     paddingHorizontal: 16,
+  },
+  themeSection: {
+    paddingVertical: 16,
+    gap: 12,
+  },
+  themeChips: {
+    flexDirection: 'row',
+    gap: 8,
   },
   menuRow: {
     flexDirection: 'row',
@@ -321,7 +508,6 @@ const styles = StyleSheet.create({
   },
   rowDivider: {
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#e5e5e5',
   },
   menuLabel: {
     fontSize: 15,
@@ -339,12 +525,34 @@ const styles = StyleSheet.create({
     opacity: 0.5,
     fontSize: 14,
   },
-  timeOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  pickerWrap: {
     marginTop: 16,
     marginBottom: 8,
+  },
+  pickerReadout: {
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  pickerColumns: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  pickerColumn: {
+    flex: 1,
+  },
+  pickerHeading: {
+    opacity: 0.5,
+    fontSize: 12,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  pickerList: {
+    maxHeight: 220,
+  },
+  pickerListContent: {
+    gap: 8,
+    alignItems: 'center',
+    paddingBottom: 8,
   },
   toggleTextWrap: {
     flex: 1,
@@ -355,7 +563,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
   },
   dangerLabel: {
-    color: '#dc2626',
     fontSize: 15,
   },
   versionText: {
@@ -366,13 +573,12 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: 'rgba(15,30,36,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
   },
   modalContent: {
-    backgroundColor: '#fff',
     borderRadius: 32,
     padding: 20,
     width: '100%',

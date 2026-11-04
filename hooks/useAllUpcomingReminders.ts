@@ -1,8 +1,8 @@
-import { useQuery } from '@tanstack/react-query';
+import { useMemo } from 'react';
 
+import { useCourses } from '@/hooks/useCourses';
 import { useAuth } from '@/providers/auth-provider';
-import { listCourses } from '@/services/Courses';
-import { listUpcomingReminders } from '@/services/UpcomingReminders';
+import { useRemindersQuery } from '@/services/reminders/reminders.hooks';
 import type { UpcomingReminder } from '@/lib/types';
 
 export type UpcomingReminderWithCourse = UpcomingReminder & {
@@ -11,34 +11,24 @@ export type UpcomingReminderWithCourse = UpcomingReminder & {
 };
 
 /**
- * All upcoming reminders across every course (for the Routine screen),
- * sorted by date ascending (invalidated alongside per-course queries).
+ * All upcoming reminders across every course (for the Routine screen), sorted
+ * by date ascending. Shares the reminders cache with the per-course views.
  */
 export function useAllUpcomingReminders() {
   const { user } = useAuth();
+  const { courses } = useCourses();
+  const query = useRemindersQuery(user?.uid);
 
-  const query = useQuery({
-    queryKey: ['allUpcomingReminders', user?.uid],
-    queryFn: async (): Promise<UpcomingReminderWithCourse[]> => {
-      if (!user) return [];
-      const courses = await listCourses(user.uid);
-      const lists = await Promise.allSettled(
-        courses.map((course) =>
-          listUpcomingReminders(user.uid, course.id).then((reminders) =>
-            reminders.map((r) => ({ ...r, courseId: course.id, courseCode: course.code })),
-          ),
-        ),
-      );
-      return lists
-        .filter((r): r is PromiseFulfilledResult<UpcomingReminderWithCourse[]> => r.status === 'fulfilled')
-        .flatMap((r) => r.value)
-        .sort((a, b) => a.date.localeCompare(b.date));
-    },
-    enabled: !!user,
-  });
+  const reminders = useMemo((): UpcomingReminderWithCourse[] => {
+    const codes = new Map(courses.map((c) => [c.id, c.code]));
+    return (query.data ?? [])
+      .filter((r) => codes.has(r.courseId))
+      .map((r) => ({ ...r, courseCode: codes.get(r.courseId) ?? '' }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [courses, query.data]);
 
   return {
-    reminders: query.data ?? [],
+    reminders,
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,

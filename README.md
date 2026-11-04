@@ -1,8 +1,10 @@
-# CSE-2100 — Academic Progress Tracker
+# Lokkhyo — Academic Progress Tracker
 
-An offline-first-style academic progress tracking app for university students. Track your **continuous assessment (CT) marks**, keep a **weekly class routine**, and set **academic targets** (GPA / CGPA / attendance) — all synced to a Firebase backend.
+A mobile academic tracker for university students. Track **continuous assessment (CT) marks**, a **weekly class routine**, **attendance per class**, **upcoming CTs/quizzes** with push reminders, and your **official GPA/CGPA and transcript**.
 
-Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo-router v6**, the **Firebase JS SDK** (Auth + Firestore), and **TanStack Query v5** for server state.
+Built with **Expo SDK 55** (React Native 0.83, React 19.2), **TypeScript**, **expo-router v55** and **TanStack Query v5**. Identity is **Firebase Auth** (`@react-native-firebase/auth`, email/password and Google). All data lives on the **Lokkhyo API** (`../lokkhyo-server`, Hono on Bun + MongoDB). The app no longer uses Firestore.
+
+> Status of the move to Hono/Bun, Expo Push, offline reads, dark mode, and widgets: see [`../TRANSITION.md`](../TRANSITION.md).
 
 ---
 
@@ -10,76 +12,83 @@ Built with **Expo SDK 54** (React Native 0.81, React 19), **TypeScript**, **expo
 
 | Tab | What it does |
 | --- | --- |
-| **Home** | Dashboard: greeting, next class from your routine, CT progress summary, target progress |
+| **Home** | Dashboard: greeting, next class from your routine, CT progress summary, attendance |
 | **Courses** | Course cards with live CT progress; tap through to a course detail screen |
-| **Routine** | Weekly class grid (Sun–Sat) with times and rooms; "today" pre-selected; **Upcoming** section for CT/quiz/assignment/labFinal reminders |
-| **Targets** | GPA / CGPA / attendance / custom targets with progress bars |
-| **Profile** | Edit your profile (name, university, department, semester, target CGPA), sign out |
+| **Attendance** | Unified calendar of every class session; mark present / absent / cancelled |
+| **Routine** | Weekly class grid (Sat–Fri) with times and rooms; **Upcoming** section for CT/quiz/assignment/labFinal reminders |
+| **Home-screen widgets (Android)** | CGPA, attendance for your first three courses, and your next reminder. Each shows when it last synced and opens the matching screen |
+| **Profile** | Profile and server CGPA, **Transcript & degree status**, change/profile photo, settings, sign out |
 
-Course detail lets you add/delete assessments (CT, quiz, assignment, lab) with marks, weights, and dates, and shows weighted progress toward the course total. It also lists **upcoming reminders** — mark-less events (CT, quiz, assignment, labFinal) that schedule a notification a few days before the date — plus a **Record marks** shortcut that converts a reminder into a graded assessment once it has happened.
+On a course's detail screen you can:
+- add and delete assessments (CT, quiz, assignment, lab), each with marks, weights and dates;
+- see the client-side **CT progress** toward the course total;
+- list **upcoming reminders**: mark-less events that send a daily push from a few days before the date;
+- record the course's **final grade**. The server grades it on the RUET scale and recomputes your GPA/CGPA.
 
 ---
 
 ## Tech stack
 
-- **Expo SDK 54** with the managed workflow — runs in **Expo Go**, no dev build required
-- **expo-router v6** — file-based routing with typed routes and protected routes
-- **React 19** + **TypeScript** (strict)
-- **Firebase JS SDK v12** (`firebase` npm package)
-  - **Firebase Auth** — email/password authentication
-  - **Cloud Firestore** — NoSQL document database
-- **TanStack Query v5** — server-state caching, queries, mutations, invalidation
-- **@react-native-async-storage/async-storage** — auth session persistence on native
-- Inline form validation — no form/validation libraries
+- **Expo SDK 55**, development build (native `@react-native-firebase` modules, so not Expo Go)
+- **expo-router v55** — file-based routing with typed routes and protected routes
+- **React 19.2** + **TypeScript** (strict)
+- **Firebase Auth** (`@react-native-firebase/auth`), plus Google Sign-In. Identity only.
+- **Lokkhyo REST API** for all data. It is called with React Native `fetch` through one wrapper (no axios).
+- **TanStack Query v5** for server-state caching, queries, mutations and invalidation
+- **expo-notifications** for Expo Push registration and notification handling
+- **AsyncStorage** for the offline cache of notification preferences
+- Inline form validation, with no form or validation libraries
 
 ---
 
 ## Architecture
 
-The app follows a strict **layered** structure. UI screens never talk to Firebase directly; they go through hooks → services → the Firebase client.
+Screens never call the network directly. Each layer only talks to the one below it:
 
 ```
-┌────────────────────────────────────────────────────────────┐
-│  Screens (app/**)                                          │
-│  expo-router routes, themed components, forms              │
-└──────────────────────────────┬─────────────────────────────┘
-                                 │ useQuery / useMutation
-┌──────────────────────────────▼─────────────────────────────┐
-│  Hooks (hooks/use-*.ts)                                    │
-│  TanStack Query: queryKey, enabled: !!user, invalidate     │
-└──────────────────────────────┬─────────────────────────────┘
-                                  │ typed functions
-┌──────────────────────────────▼─────────────────────────────┐
-│  Services (services/*.ts)                                  │
-│  Firestore CRUD: getDocs / setDoc / addDoc / updateDoc     │
-└──────────────────────────────┬─────────────────────────────┘
-                                  │
-┌──────────────────────────────▼─────────────────────────────┐
-│  Firebase (lib/firebase.ts)                                │
-│  initializeApp + initializeAuth (RN persistence) + Firestore│
-└────────────────────────────────────────────────────────────┘
+Screens (app/**)
+   │  same hooks as before the API migration
+Hooks (hooks/use*.ts)                  thin adapters, unchanged return shapes
+   │
+Feature modules (services/<feature>/)  one folder per server resource
+   ├─ <feature>.types.ts     wire DTOs, mirroring the server's Zod schemas
+   ├─ <feature>.api.ts       the only files that call request()
+   ├─ <feature>.services.ts  DTO ⇄ app-type mappers, multi-step flows
+   └─ <feature>.hooks.ts     TanStack Query: uid-scoped key factory, queries, mutations
+   │
+lib/api/                               feature-agnostic HTTP plumbing
+   ├─ client.ts       request(): base URL, Bearer ID token, JSON, error envelope,
+   │                  Idempotency-Key, timeout, one 401 → token refresh → retry
+   ├─ auth-token.ts   getIdToken(): the Firebase ID token (force-refresh on 401)
+   ├─ config.ts       EXPO_PUBLIC_API_URL, timeout, the API_LOGGING flag
+   ├─ logger.ts       [api] request/response/retry/error console trace (gated)
+   ├─ pagination.ts   paginateAll(): follows cursors to a full array
+   ├─ idempotency.ts  newIdempotencyKey() for POST /results
+   └─ error.ts        ApiError { code, status, details }
 ```
 
-Pure business logic lives in **`lib/`** (no framework imports):
+The feature modules are `auth`, `profile`, `semesters`, `courses`, `routine`, `attendance`, `assessments`, `reminders` (server `deadlines`), `grades` (GPA engine and results), `notification-prefs`, and `devices` (push registration after sign-in, unregistered on sign-out/delete).
 
-- `lib/firebase.ts` — Firebase app/auth/db initialization (platform-aware)
-- `lib/types.ts` — TypeScript interfaces mirroring Firestore documents
-- `lib/gpa.ts` — progress math (`courseProgress`, `weightedPercent`)
-- `lib/validate.ts` — tiny inline validation helpers
-- `lib/constants.ts` — day names, assessment/target types, GPA scale
-- `lib/firebase-auth.d.ts` — type shim for the RN auth persistence helper
+**Mappers own every mismatch between the app and the server.**
+- Day of week: the app's 0=Saturday…6=Friday ⇄ `"SATURDAY"`.
+- Enums: lowercase ⇄ `UPPER_SNAKE`.
+- Assessment type: `labFinal` ⇄ `LAB`.
+- Semester length: `totalWeeks` ⇄ `endDate`.
+- Reminder date ⇄ `dueAt`.
 
-### Why TanStack Query?
+Screens only ever see the types in `lib/types.ts`.
 
-All server data goes through TanStack Query so screens get automatic loading/error/refetch handling, caching, and consistent optimistic UI. Mutations invalidate their query keys to keep the UI in sync:
+Pure logic lives in `lib/` (no network): `gpa.ts` (CT progress), `attendance.ts` (session generation and stats), `routine.ts`, `reminders.ts`, `validate.ts`, `constants.ts`.
 
-```ts
-useMutation({ mutationFn: addAssessment, onSuccess: () => invalidateQueries(['assessments', courseId]) })
-```
+### Coursework vs. official grade
 
-### Why services on top of Firestore directly?
+- **Coursework** (CT, quiz, assignment, lab marks) is stored on each assessment's `marksObtained`. The app turns it into the **CT progress** bar locally.
+- **Official grade:** the course's **final grade** is a server `result` against the course's single `FINAL` assessment. GPA, CGPA, transcript and degree status are computed **only on the server** and displayed as returned.
 
-The services layer keeps Firestore paths and document mapping in one place and gives screens/hooks typed, testable functions instead of scattering `collection(db, ...)` calls through components.
+### Query keys and sign-out
+
+- Every key factory is scoped by the Firebase uid, so one user's cached data can never be read under another account.
+- `AuthProvider` clears the whole query cache when the signed-in uid changes.
 
 ---
 
@@ -87,204 +96,123 @@ The services layer keeps Firestore paths and document mapping in one place and g
 
 ```
 app/
-  _layout.tsx                Root layout: providers + protected routes (Stack.Protected)
-  (auth)/
-    _layout.tsx              Auth stack
-    login.tsx                Sign-in screen
-    signup.tsx               Sign-up (also creates profile + default semester)
-  (tabs)/
-    _layout.tsx              Bottom tab bar (Home, Courses, Routine, Targets, Profile)
-    index.tsx                Dashboard
-    courses.tsx              Course list with CT progress
-    routine.tsx              Weekly routine
-    targets.tsx              Target list
-    profile.tsx              Profile + sign out
-  course/
-    [id].tsx                 Course detail + assessment list
-    new.tsx                  Create course (modal)
-  assessment/
-    new.tsx                  Add assessment / CT mark (modal; supports preset + fromReminderId)
-  reminder/
-    new.tsx                  Add/edit upcoming reminder (course chips when opened from Routine)
-  routine/
-    new.tsx                  Add class slot (modal)
-  target/
-    new.tsx                  Add target (modal)
-components/
-  themed-*.tsx               Existing themed Text/View wrappers
-  course-card.tsx            Reusable course card with progress bar
-  ui/
-    button.tsx chip.tsx field.tsx progress-bar.tsx 
-constants/theme.ts           Light/dark color tokens
-hooks/                       use-auth, use-profile, use-courses, use-assessments,
-                             use-routines, use-targets, use-semesters,
-                             use-upcoming-reminders, use-all-upcoming-reminders,
-                             use-notification-preferences, use-scheduled-notifications
-lib/                         firebase init, types, gpa/validate/constants/reminders logic
-providers/
-  auth-provider.tsx          AuthContext: user + initializing (onAuthStateChanged)
-  query-provider.tsx         QueryClientProvider
-services/                    auth, profile, semesters, courses, assessments,
-                             routines, targets, upcoming-reminders (typed Firestore CRUD),
-                             notifications/ (scheduled-notification sync)
+  _layout.tsx               Providers + protected routes (Stack.Protected)
+  (auth)/login.tsx, signup.tsx
+  (tabs)/index, courses, attendance, routine, profile
+  course/[id].tsx           Course detail: CT progress, reminders, assessments, final grade
+  course/new.tsx            Create course
+  assessment/new.tsx        Add/edit a mark (supports converting a reminder)
+  reminder/new.tsx          Add/edit an upcoming reminder
+  routine/new.tsx           Add a class slot
+  profile/edit.tsx          Edit profile, change photo, choose/create semester
+  profile/transcript.tsx    Transcript + degree status (server GPA engine)
+  settings/settings.tsx     Notification toggles/time, delete account
+components/                 Themed UI, CourseCard, attendance calendar, grades/FinalGradeCard
+hooks/                      Screen-facing adapters over the feature modules
+lib/                        Pure logic + lib/api plumbing
+providers/                  AuthProvider (session + cache clearing), QueryProvider
+services/<feature>/         Feature modules (see Architecture)
+services/notifications/     Channels and handlers; clears local schedules left by older builds
 ```
 
 ---
 
-## Firestore data model
+## Data
 
-Every collection is nested under the owning user, so security rules can lock down an entire user subtree with a single rule.
+The server is the source of truth. See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for every endpoint and [`../architecture.md`](../architecture.md) for the reasoning behind it.
 
-```
-users/{uid}                          ← profile document
-  fullName, university, department, currentSemester, targetCgpa, createdAt
-  ├─ semesters/{semesterId}
-  │     name, status ("active"|"archived"), targetGpa, createdAt
-  ├─ courses/{courseId}
-  │     semesterId, code, title, credits, passMarks, ctWeight, createdAt
-  │     ├─ assessments/{assessmentId}
-  │     │     type (ct|quiz|assignment|lab), name, marksObtained,
-  │     │     maxMarks, weight (%), date (YYYY-MM-DD), createdAt
-  │     └─ upcomingReminders/{reminderId}
-  │           type (ct|quiz|assignment|labFinal), name,
-  │           date (YYYY-MM-DD), createdAt          ← no marks; progress untouched
-  ├─ routineSlots/{slotId}
-  │     courseId, courseLabel, dayOfWeek (0=Sat…6=Fri, week starts Saturday),
-  │     startTime, endTime (HH:MM 24h), room, createdAt
-  └─ targets/{targetId}
-        type (gpa|cgpa|attendance|custom), title, targetValue,
-        currentValue, unit, targetDate, createdAt
-```
-
-### Security rules
-
-Users must only be able to read/write their own subtree. One recursive rule covers everything:
-
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /users/{userId}/{document=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-  }
-}
-```
-
-Paste this into **Firestore → Rules** in the Firebase console.
+| App concept | Server resource |
+| --- | --- |
+| Profile | `GET/PATCH/DELETE /me`, `PUT/DELETE /me/photo` |
+| Semesters (status, target GPA, weeks) | `/semesters`, `POST /semesters/:id/activate` |
+| Courses (credits, pass marks, CT weight, lab, teachers) | `/courses` |
+| Routine slots | `GET /me/routine/week`, `PUT /courses/:id/routine` (ids are kept) |
+| Attendance per class session | `PUT /courses/:id/attendance` on `(date, slotId)` |
+| Assessments + CT marks | `/assessments` |
+| Upcoming reminders | `/deadlines` of type `ASSESSMENT`, with `assessmentType` |
+| Final grade, GPA, CGPA, transcript | `/results`, `/me/cgpa`, `/me/gpa`, `/me/transcript`, `/me/degree-status` |
+| Notification preferences | `/me/notification-prefs`, with an AsyncStorage offline cache |
 
 ---
 
-## State management
+## Auth
 
-### Auth
+`AuthProvider` subscribes to `onAuthStateChanged` and exposes `{ user, initializing }`.
 
-`AuthProvider` subscribes to `onAuthStateChanged` and exposes `{ user, initializing }`:
-
-- On native, the auth session persists across app restarts via `initializeAuth(app, { persistence: getReactNativePersistence(AsyncStorage) })` (`lib/firebase.ts`).
-- `app/_layout.tsx` keeps the native splash screen visible until `initializing` is false, then mounts the router with **`Stack.Protected`** guards:
-  - `guard={!!user}` → `(tabs)` and the stack screens
-  - `guard={!user}` → `(auth)` login/signup
-
-Sign-up creates the user's profile document and a default active semester (`Semester 1`).
-
-### Data
-
-Every `use-*` hook:
-
-1. Reads the current user from `useAuth()`
-2. Defines a `queryKey` (e.g. `['assessments', courseId]`)
-3. Sets `enabled: !!user` so queries wait for auth
-4. Exposes the matching mutation with invalidation
+- `app/_layout.tsx` keeps the splash screen up until auth (and the first course/routine loads) settle. It then mounts `Stack.Protected` guards: `guard={!!user}` for the app, `guard={!user}` for `(auth)`.
+- **Server provisioning:** the first authenticated request (`GET /me`, mounted by `AuthProvider`) creates the server profile.
+- **New accounts:** sign-up and sign-in call `ensureLocalAccount`, which creates a default "Semester 1" when the account has none.
+- **Deleting an account:** `DELETE /me` purges the server data first, then the Firebase user is deleted.
 
 ---
 
-## Validation strategy
+## Home-screen widgets
 
-No form libraries — forms are controlled `TextInput` state with a small `errors` record. `lib/validate.ts` exports tiny pure helpers:
-
-- `required(value, label)` — non-empty check
-- `isNumeric(value, label)` — numeric check
-- `clampMarks(value, max)` — `0 ≤ marks ≤ max`
-- `gpaRange(value)` — `0–4` (BD scale)
-- `isTime(value)` / `parseTime(value)` — `HH:MM` 24h format and minutes
-
-Each screen validates on submit, shows per-field errors, and clears them as the user types.
-
----
-
-## Key logic
-
-`lib/gpa.ts` computes course progress from recorded assessments:
-
-- `courseProgress(assessments)` → `{ obtained, max, percent }` (raw sum)
-- `weightedPercent(assessments)` → weighted score across assessments using each one's `weight`, capped at 100%
-
-These feed the progress bars on the dashboard, course cards, and course detail. The dashboard also computes the **next class** from the routine by scanning the next 7 days for the first slot at/after the current time.
-
----
+Android only. After Home loads, the app writes a small snapshot to AsyncStorage (`lib/widgetSnapshot.ts`, `hooks/useWidgetSync.ts`). Widgets (`widgets/`) only read that snapshot and never call the network, so they show what Home last showed, including offline. Signing out clears it. Android also redraws them every 6 hours so "Tomorrow" stays true. Adding or renaming a widget means updating `app.json` and rebuilding the native app.
 
 ## Upcoming reminders & notifications
 
-Reminders are a **separate entity from graded assessments** (`UpcomingReminder` in `lib/types.ts`): they carry only `type`, `name`, and `date` — no marks — so an upcoming test never affects progress. Once the event happens, use **Record marks after it happens** on the reminder form to convert it into a normal assessment (the reminder is deleted).
-
-- **Create** from the **Routine** tab (`+` in the Upcoming section) or a course detail screen; the form is `app/reminder/new.tsx`.
-- **Lead time** (`lib/reminders.ts` → `REMINDER_LEAD_DAYS`): `ct`/`assignment` = 2 days, `quiz` = 3 days, `labFinal` = 5 days. Notifications fire at the reminder time set in **Settings** (default 07:00).
-- **Sync** (`services/notifications/assessmentReminders.ts`) unions graded assessments and upcoming reminders, then cancels/reschedules local notifications — honoring the **Settings toggles** (`assessmentRemindersEnabled`, `dailyRoutineEnabled`).
-- **Tap-through**: notification payload carries `courseId` + `assessmentId`/`reminderId`; tapping opens the course screen and briefly highlights the matching row.
-- Queries/mutations live in `hooks/useUpcomingReminders.ts` (per-course) and `hooks/useAllUpcomingReminders.ts` (cross-course, for the Routine page).
+- **Separate from marks.** Reminders carry only `type`, `name` and `date`, never marks, so an upcoming test cannot affect progress.
+- **Turning one into a mark.** Once the event has happened, **Record marks** turns it into an assessment; the reminder is deleted.
+- **Lead time** (`lib/reminders.ts`): `ct`/`assignment` 2 days, `quiz` 3 days, `labFinal` 5 days. A reminder repeats daily from that lead through the event day, at the reminder time set in **Settings** (default 07:00). The same applies to dated assessments.
+- **Delivery is server push.** The dispatcher in `lokkhyo-server/services/dispatch.ts` sends them; `REMINDER_LEAD_DAYS` here must match `ASSESSMENT_REMINDER_LEAD_DAYS` in its `lib/digest.ts`.
+- **Preferences** are stored on the server, which is what the dispatcher reads. Toggles also write to AsyncStorage, so Settings still shows them offline.
 
 ---
 
 ## Getting started
 
-### 1. Create a Firebase project
+1. **Run the API.** In `../lokkhyo-server`, run `bun install && bun run dev` (the server uses Bun; this app uses yarn). See [`../lokkhyo-server/SERVER.md`](../lokkhyo-server/SERVER.md) for its `.env`.
+2. **Use one Firebase project.** The app's `google-services.json` and the server's `FIREBASE_SERVICE_ACCOUNT` must belong to the **same Firebase project**. Otherwise the ID tokens won't verify.
+3. **Create `.env`:**
 
-1. Go to [Firebase Console](https://console.firebase.google.com/) → **Add project**
-2. Add a **Web app** (Project settings → Your apps → Web) — copy its config values
-3. **Build → Authentication → Sign-in method** → enable **Email/Password**
-4. **Build → Firestore Database** → create the database, then paste the [security rules](#security-rules) into the **Rules** tab
+   ```
+   EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...
+   # Optional. Defaults to http://10.0.2.2:3000 (Android emulator) / http://localhost:3000.
+   # A physical device needs your machine's LAN IP, e.g. http://192.168.1.20:3000
+   EXPO_PUBLIC_API_URL=...
+   # Optional. Request/response logging; on by default in development.
+   EXPO_PUBLIC_API_LOG=...
+   # Optional. Crash reporting in release builds; off when unset.
+   EXPO_PUBLIC_SENTRY_DSN=...
+   ```
 
-### 2. Configure the app
+4. **Install and run.** This is a development build, because the app uses native Firebase modules:
+
+   ```bash
+   yarn
+   npx expo prebuild --clean   # after native dependency changes
+   yarn android                # or: yarn ios
+   ```
+
+## Building a release APK
+
+### Locally, with Gradle (arm64-v8a only)
+
+Build a release APK straight through the Android toolchain — no EAS. Needs Java 17, the Android SDK (platform + build-tools + NDK) and `ANDROID_HOME` set:
 
 ```bash
-cp .env.example .env
+cd android
+./gradlew :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
 ```
 
-Fill `.env` with your Firebase Web app values:
+- Output: `android/app/build/outputs/apk/release/app-release.apk`.
+- `-PreactNativeArchitectures=arm64-v8a` restricts the APK to 64-bit ARM only (the default in `android/gradle.properties` builds all four ABIs). Pass it on the command line — `npx expo prebuild` regenerates `gradle.properties` and would drop an edit made there.
+- **Signing is debug for now**, because no release keystore is set up. That is fine for internal/testing installs, but **not** for Play Store uploads. See [`LocalBuild.md`](./LocalBuild.md), including why the keystore in old git history must not be reused.
+- No prebuild is needed for the app's native modules here; `expo-image-picker`'s own manifest already merges in the `CAMERA`/media permissions.
 
-```
-EXPO_PUBLIC_FIREBASE_API_KEY=...
-EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN=...
-EXPO_PUBLIC_FIREBASE_PROJECT_ID=...
-EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET=...
-EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
-EXPO_PUBLIC_FIREBASE_APP_ID=...
-```
+### With EAS
 
-`.env` is gitignored; never commit real keys.
-
-### 3. Install and run
-
-```bash
-npm install
-npx expo start        # works in Expo Go on iOS/Android
-```
+The `eas.json` `production` profile builds an APK (`buildType: "apk"`, `:app:assembleRelease`). See the build scripts below.
 
 ## Scripts
 
 | Command | Purpose |
 | --- | --- |
-| `npm run start` | Start the Expo dev server |
-| `npm run android` | Start on Android (Expo Go / emulator) |
-| `npm run ios` | Start on iOS simulator |
-| `npm run web` | Start on web |
-| `npm run lint` | Run ESLint (`expo lint`) |
-| `npm run check:errors` | Type-check + lint (used as the pre-commit gate) |
-| `npx tsc --noEmit` | Type-check the project |
-
-## Notes
-
-- **Expo Go compatible** — the Firebase JS SDK needs no native build.
-- The Firebase **publishable/anon key** is embedded in the app by design; that is why Firestore security rules are mandatory, not optional.
-- Web static export runs during `npx expo export --platform web`; Firebase requires valid `.env` values for that to complete.
+| `yarn dev` | Start the Expo dev server with a clean cache |
+| `yarn android` / `yarn ios` | Run on a device or emulator |
+| `yarn check:errors` | Type-check + lint (the pre-commit gate) |
+| `yarn build:apk` | Prebuild + local EAS release APK (Android) |
+| `yarn build:preview` | Prebuild + local EAS preview build (Android) |
+| `yarn build:dev` | Local EAS development build (Android) |
+| `yarn build:android` / `yarn build:ios` | Cloud EAS production build |

@@ -1,97 +1,51 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback } from 'react';
 
+import type { UpcomingReminder } from '@/lib/types';
 import { useAuth } from '@/providers/auth-provider';
 import {
-  createUpcomingReminder,
-  deleteUpcomingReminder,
-  listUpcomingReminders,
-  updateUpcomingReminder,
-  type NewUpcomingReminder,
-} from '@/services/UpcomingReminders';
-import { syncAssessmentReminders } from '@/services/notifications/assessmentReminders';
+  useCreateReminder,
+  useDeleteReminder,
+  useRemindersQuery,
+  useUpdateReminder,
+} from '@/services/reminders/reminders.hooks';
+import type { CourseReminder } from '@/services/reminders/reminders.services';
 
+/**
+ * One course's upcoming reminders — the screens' API, unchanged in shape. It
+ * now adapts the `services/reminders` module (`/deadlines`) instead of Firestore.
+ */
 export function useUpcomingReminders(courseId: string) {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  const query = useQuery({
-    queryKey: ['upcomingReminders', courseId],
-    queryFn: () => (user ? listUpcomingReminders(user.uid, courseId) : []),
-    enabled: !!user && !!courseId,
-  });
-
-  const invalidate = () => {
-    queryClient.invalidateQueries({ queryKey: ['upcomingReminders', courseId] });
-    queryClient.invalidateQueries({ queryKey: ['allUpcomingReminders'] });
-    queryClient.invalidateQueries({ queryKey: ['upcomingAssessmentReminders'] });
-  };
-
-  const sync = () => {
-    if (user) void syncAssessmentReminders(user.uid);
-  };
-
-  const createMutation = useMutation({
-    mutationFn: (data: NewUpcomingReminder) => {
-      if (!user) throw new Error('Not authenticated');
-      return createUpcomingReminder(user.uid, courseId, data);
-    },
-    onSuccess: () => {
-      invalidate();
-      sync();
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<NewUpcomingReminder> }) => {
-      if (!user) throw new Error('Not authenticated');
-      return updateUpcomingReminder(user.uid, courseId, id, data);
-    },
-    onSuccess: () => {
-      invalidate();
-      sync();
-    },
-  });
-
-  const deleteMutation = useMutation({
-    mutationFn: (reminderId: string) => {
-      if (!user) throw new Error('Not authenticated');
-      return deleteUpcomingReminder(user.uid, courseId, reminderId);
-    },
-    onSuccess: () => {
-      invalidate();
-      sync();
-    },
-  });
+  const select = useCallback(
+    (all: CourseReminder[]): UpcomingReminder[] =>
+      all.filter((r) => r.courseId === courseId).map(({ courseId: _courseId, ...reminder }) => reminder),
+    [courseId],
+  );
+  const query = useRemindersQuery(courseId ? user?.uid : null, select);
 
   return {
     reminders: query.data ?? [],
     isLoading: query.isLoading,
     isError: query.isError,
     error: query.error,
-    createReminder: createMutation,
-    updateReminder: updateMutation,
-    deleteReminder: deleteMutation,
+    createReminder: useCreateReminder(user?.uid, courseId),
+    updateReminder: useUpdateReminder(user?.uid),
+    deleteReminder: useDeleteReminder(user?.uid),
   };
 }
 
 /**
  * Course-agnostic delete (for the Routine screen, where reminders from every
- * course are listed together).
+ * course are listed together). Keeps the `{ courseId, reminderId }` argument
+ * the screen passes; a deadline id alone identifies it on the server.
  */
 export function useDeleteUpcomingReminder() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: ({ courseId, reminderId }: { courseId: string; reminderId: string }) => {
-      if (!user) throw new Error('Not authenticated');
-      return deleteUpcomingReminder(user.uid, courseId, reminderId);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['upcomingReminders'] });
-      queryClient.invalidateQueries({ queryKey: ['allUpcomingReminders'] });
-      queryClient.invalidateQueries({ queryKey: ['upcomingAssessmentReminders'] });
-      if (user) void syncAssessmentReminders(user.uid);
-    },
-  });
+  const remove = useDeleteReminder(user?.uid);
+  return {
+    ...remove,
+    mutate: ({ reminderId }: { courseId: string; reminderId: string }) => remove.mutate(reminderId),
+    mutateAsync: ({ reminderId }: { courseId: string; reminderId: string }) =>
+      remove.mutateAsync(reminderId),
+  };
 }

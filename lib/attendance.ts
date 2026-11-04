@@ -1,4 +1,4 @@
-import type { AcademicTarget, AttendanceRecord, AttendanceStatus, RoutineSlot } from '@/lib/types';
+import type { AttendanceRecord, AttendanceStatus, RoutineSlot } from '@/lib/types';
 import { parseTime } from '@/lib/validate';
 import { dateToWeekdayIndex } from '@/lib/routine';
 
@@ -142,18 +142,4 @@ export function computeAttendanceStats(sessions: AttendanceSession[]): Attendanc
   const eligible = percent >= EXAM_ELIGIBILITY_THRESHOLD;
 
   return { held, present, absent, cancelled, percent, mark, eligible };
-}
-
-/**
- * Resolves a target's current value and progress percent. For 'attendance'
- * targets, the live aggregate attendance percent replaces the stored,
- * manually-entered currentValue so the target always reflects real data.
- */
-export function resolveTargetProgress(
-  target: AcademicTarget,
-  overallAttendancePercent: number,
-): { current: number; percent: number } {
-  const current = target.type === 'attendance' ? overallAttendancePercent : target.currentValue;
-  const percent = target.targetValue > 0 ? Math.round((current / target.targetValue) * 100) : 0;
-  return { current, percent };
 }
