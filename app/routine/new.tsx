@@ -7,7 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
-import { useCourses } from '@/hooks/useCourses';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useRoutines } from '@/hooks/useRoutines';
 import { DAY_NAMES, DAY_SHORT_NAMES } from '@/lib/constants';
 import { getTodayOfWeek } from '@/lib/routine';
@@ -18,7 +18,8 @@ import { BackStep } from '@/components/ui/BackStep';
 export default function NewRoutineSlotScreen() {
   const router = useRouter();
   const { createRoutineSlot } = useRoutines();
-  const { courses } = useCourses();
+  // Classes are scheduled for the active semester's courses only.
+  const { courses } = useActiveSemester();
   const { palette } = useTheme();
 
   const [dayOfWeek, setDayOfWeek] = useState<number>(getTodayOfWeek());
@@ -80,7 +81,7 @@ export default function NewRoutineSlotScreen() {
           <View style={styles.section}>
             <ThemedText type="defaultSemiBold" style={{ paddingLeft: 8 }}>Course</ThemedText>
             {courses.length === 0 ? (
-              <ThemedText style={styles.meta}>Add a course first to schedule classes.</ThemedText>
+              <ThemedText style={styles.meta}>Add a course to the current semester first to schedule classes.</ThemedText>
             ) : (
               <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
                 {courses.map((c) => (

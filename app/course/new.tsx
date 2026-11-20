@@ -1,12 +1,13 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useTheme } from '@/providers/theme-provider';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useCourses } from '@/hooks/useCourses';
 import { useSemesters } from '@/hooks/useSemesters';
 import { isNumeric, required } from '@/lib/validate';
@@ -18,11 +19,12 @@ export default function NewCourseScreen() {
   const router = useRouter();
   /** Opening from a semester's page means that term, not the first in the list. */
   const { semesterId: semesterParam } = useLocalSearchParams<{ semesterId?: string }>();
-  const { createCourse } = useCourses();
+  const { courses, createCourse } = useCourses();
   const { semesters } = useSemesters();
+  const { currentSemesterId } = useActiveSemester();
   const { palette } = useTheme();
 
-  const [semesterId, setSemesterId] = useState(semesterParam ?? '');
+  const [pickedSemesterId, setSemesterId] = useState(semesterParam ?? '');
   const [code, setCode] = useState('');
   const [title, setTitle] = useState('');
   const [credits, setCredits] = useState('');
@@ -34,10 +36,29 @@ export default function NewCourseScreen() {
   const [isLab, setIsLab] = useState(false);
   const [errors, setErrors] = useState<Record<string, string | null>>({});
 
-  // The term list arrives after mount, so fall back to the first one once it does.
+  /** Fields the user has typed into; prefills never overwrite these. */
+  const edited = useRef(new Set<'passMarks' | 'ctWeight'>());
+
+  // Pass marks and CT weight rarely change between courses, so a new course
+  // starts from the most recently added theory course's values.
+  const lastTheory = courses
+    .filter((c) => !c.isLab)
+    .reduce<(typeof courses)[number] | undefined>(
+      (latest, c) => (!latest || (c.createdAt ?? '').localeCompare(latest.createdAt ?? '') > 0 ? c : latest),
+      undefined,
+    );
   useEffect(() => {
-    if (!semesterId && semesters[0]) setSemesterId(semesters[0].id);
-  }, [semesterId, semesters]);
+    if (!lastTheory) return;
+    if (!edited.current.has('passMarks') && lastTheory.passMarks > 0) setPassMarks(String(lastTheory.passMarks));
+    if (!edited.current.has('ctWeight') && lastTheory.ctWeight > 0) setCtWeight(String(lastTheory.ctWeight));
+  }, [lastTheory]);
+
+  // Until a term is picked, default to the active semester, else the first. Derived
+  // rather than stored, so it is right whichever of profile and terms loads first.
+  const semesterId =
+    pickedSemesterId ||
+    (semesters.find((s) => s.id === currentSemesterId) ?? semesters[0])?.id ||
+    '';
 
   const handleAddTeacher = () => {
     const name = teacherInput.trim();
@@ -181,6 +202,7 @@ export default function NewCourseScreen() {
                 keyboardType="numeric"
                 value={passMarks}
                 onChangeText={(v) => {
+                  edited.current.add('passMarks');
                   setPassMarks(v);
                   setErrors((e) => ({ ...e, passMarks: null }));
                 }}
@@ -192,6 +214,7 @@ export default function NewCourseScreen() {
                 keyboardType="numeric"
                 value={ctWeight}
                 onChangeText={(v) => {
+                  edited.current.add('ctWeight');
                   setCtWeight(v);
                   setErrors((e) => ({ ...e, ctWeight: null }));
                 }}

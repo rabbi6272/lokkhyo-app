@@ -11,9 +11,8 @@ import { SectionHeader } from '@/components/ui/SectionHeader';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { useTheme } from '@/providers/theme-provider';
-import { useAllUpcomingReminders } from '@/hooks/useAllUpcomingReminders';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
-import { useRoutines } from '@/hooks/useRoutines';
 import { useDeleteUpcomingReminder } from '@/hooks/useUpcomingReminders';
 import { DAY_NAMES, DAY_SHORT_NAMES } from '@/lib/constants';
 import { buildReminderLine } from '@/lib/reminders';
@@ -22,8 +21,14 @@ import { parseTime } from '@/lib/validate';
 
 export default function RoutineScreen() {
   const router = useRouter();
-  const { slots, isLoading, deleteRoutineSlot } = useRoutines();
-  const { reminders: upcoming, isLoading: isUpcomingLoading } = useAllUpcomingReminders();
+  // Only the active semester's classes and reminders.
+  const {
+    slots,
+    reminders: upcoming,
+    isSlotsLoading: isLoading,
+    isRemindersLoading: isUpcomingLoading,
+    deleteRoutineSlot,
+  } = useActiveSemester();
   const deleteUpcoming = useDeleteUpcomingReminder();
   const prefs = useNotificationPreferences();
   const { palette, fontFamily } = useTheme();

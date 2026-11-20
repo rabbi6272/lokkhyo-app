@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, View, type TextStyle, type ViewStyle } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
-import { BlurredModal } from '@/components/ui/AppBlur';
+import { AppModal } from '@/components/ui/AppModal';
 import { Chip } from '@/components/ui/Chip';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { useTheme } from '@/providers/theme-provider';
@@ -131,17 +131,13 @@ export function UnifiedAttendanceCalendar({
         ))}
       </View>
 
-      <BlurredModal
+      <AppModal
         visible={!!selectedDate}
         onClose={() => setSelectedDate(null)}
         placement="bottom"
-        animationType='fade'
-      >
-        <View style={styles.modalContent(palette, radius, space)}>
-          <ThemedText type="eyebrow">MARK ATTENDANCE</ThemedText>
-          <ThemedText type="heading" style={styles.modalTitle}>
-            {selectedDate ? formatDateHeading(selectedDate) : ''}
-          </ThemedText>
+        eyebrow="MARK ATTENDANCE"
+        title={selectedDate ? formatDateHeading(selectedDate) : ''}>
+        <View style={styles.sessions(space)}>
           {selectedSessions.map((d) => (
             <View key={`${d.courseId}_${d.session.slotId}`} style={styles.sessionRow(palette, space)}>
               <ThemedText type="defaultSemiBold">{d.courseCode}</ThemedText>
@@ -161,7 +157,7 @@ export function UnifiedAttendanceCalendar({
             </View>
           ))}
         </View>
-      </BlurredModal>
+      </AppModal>
     </View>
   );
 }
@@ -257,33 +253,7 @@ const styles = {
     fontSize: 11,
     color: palette.muted,
   }),
-  modalOverlay: (palette: Palette): ViewStyle => {
-    const hex = palette.ink.replace('#', '');
-    const r = parseInt(hex.slice(0, 2), 16) || 15;
-    const g = parseInt(hex.slice(2, 4), 16) || 30;
-    const b = parseInt(hex.slice(4, 6), 16) || 36;
-    return {
-      flex: 1,
-      backgroundColor: `rgba(${r},${g},${b},0.45)`,
-      justifyContent: 'flex-end',
-    };
-  },
-  modalContent: (
-    palette: Palette,
-    radius: Theme['radius'],
-    space: Theme['space'],
-  ): ViewStyle => ({
-    backgroundColor: palette.surface,
-    borderTopLeftRadius: radius.lg + 4,
-    borderTopRightRadius: radius.lg + 4,
-    padding: space.xl,
-    paddingBottom: space.xxl,
-    width: '100%',
-    gap: space.md,
-  }),
-  modalTitle: {
-    marginBottom: 8,
-  } as TextStyle,
+  sessions: (space: Theme['space']): ViewStyle => ({ gap: space.md }),
   sessionRow: (
     palette: Palette,
     space: Theme['space'],

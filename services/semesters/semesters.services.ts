@@ -15,6 +15,8 @@ export function toSemester(dto: SemesterDto): Semester {
     targetGpa: dto.targetGpa ?? 0,
     startDate: dto.startDate,
     totalWeeks: dto.totalWeeks ?? weeksBetween(dto.startDate, dto.endDate),
+    recordedGpa: dto.recordedGpa ?? null,
+    recordedCredits: dto.recordedCredits ?? null,
     createdAt: dto.createdAt,
   };
 }

@@ -14,7 +14,7 @@ import {
 import { ThemedText } from '@/components/ThemedText';
 import { Avatar } from '@/components/ui/Avatar';
 import { BackStep } from '@/components/ui/BackStep';
-import { BlurredModal } from '@/components/ui/AppBlur';
+import { AppModal } from '@/components/ui/AppModal';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
@@ -291,96 +291,82 @@ export default function EditProfileScreen() {
             <Button title="Save changes" onPress={handleSave} loading={updateProfile.isPending} />
           </View>
 
-          <BlurredModal
+          <AppModal
             visible={modalVisible}
-            onClose={() => setModalVisible(false)}>
-            <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                New Semester
-              </ThemedText>
-              <Field
-                label="Semester name"
-                placeholder="e.g. Fall 2026"
-                value={newSemName}
-                onChangeText={setNewSemName}
-                error={newSemErrors.name}
-              />
-              <Field
-                label="Target GPA (optional)"
-                placeholder="e.g. 3.80"
-                keyboardType="numeric"
-                value={newSemGpa}
-                onChangeText={setNewSemGpa}
-                error={newSemErrors.targetGpa}
-              />
-              <Field
-                label="Start date (YYYY-MM-DD)"
-                placeholder="2026-01-04"
-                value={newSemStartDate}
-                onChangeText={(v) => {
-                  setNewSemStartDate(v);
-                  setNewSemErrors((e) => ({ ...e, startDate: null }));
-                }}
-                error={newSemErrors.startDate}
-              />
-              <Field
-                label="Total weeks"
-                placeholder="13"
-                keyboardType="numeric"
-                value={newSemTotalWeeks}
-                onChangeText={(v) => {
-                  setNewSemTotalWeeks(v);
-                  setNewSemErrors((e) => ({ ...e, totalWeeks: null }));
-                }}
-                error={newSemErrors.totalWeeks}
-              />
-              <View style={styles.modalButtons}>
-                <Button
-                  title="Cancel"
-                  variant="ghost"
-                  onPress={() => {
-                    setModalVisible(false);
-                    setNewSemName('');
-                    setNewSemGpa('');
-                    setNewSemStartDate('');
-                    setNewSemTotalWeeks('13');
-                    setNewSemErrors({});
-                  }}
-                />
-                <Button title="Create" onPress={handleCreateSemester} />
-              </View>
-            </View>
-          </BlurredModal>
+            onClose={() => setModalVisible(false)}
+            title="New semester"
+            actions={[
+              {
+                title: 'Cancel',
+                variant: 'secondary',
+                onPress: () => {
+                  setModalVisible(false);
+                  setNewSemName('');
+                  setNewSemGpa('');
+                  setNewSemStartDate('');
+                  setNewSemTotalWeeks('13');
+                  setNewSemErrors({});
+                },
+              },
+              { title: 'Create', onPress: handleCreateSemester },
+            ]}>
+            <Field
+              label="Semester name"
+              placeholder="e.g. Fall 2026"
+              value={newSemName}
+              onChangeText={setNewSemName}
+              error={newSemErrors.name}
+            />
+            <Field
+              label="Target GPA (optional)"
+              placeholder="e.g. 3.80"
+              keyboardType="numeric"
+              value={newSemGpa}
+              onChangeText={setNewSemGpa}
+              error={newSemErrors.targetGpa}
+            />
+            <Field
+              label="Start date (YYYY-MM-DD)"
+              placeholder="2026-01-04"
+              value={newSemStartDate}
+              onChangeText={(v) => {
+                setNewSemStartDate(v);
+                setNewSemErrors((e) => ({ ...e, startDate: null }));
+              }}
+              error={newSemErrors.startDate}
+            />
+            <Field
+              label="Total weeks"
+              placeholder="13"
+              keyboardType="numeric"
+              value={newSemTotalWeeks}
+              onChangeText={(v) => {
+                setNewSemTotalWeeks(v);
+                setNewSemErrors((e) => ({ ...e, totalWeeks: null }));
+              }}
+              error={newSemErrors.totalWeeks}
+            />
+          </AppModal>
 
-          <BlurredModal
+          <AppModal
             visible={photoModalVisible}
-            onClose={() => setPhotoModalVisible(false)}>
-            <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
-              <ThemedText type="subtitle" style={styles.modalTitle}>
-                Profile photo
-              </ThemedText>
-              <ThemedText style={styles.modalHint}>
-                Pick a photo from your library or take one now. It appears on your profile.
-              </ThemedText>
-              <View style={styles.photoActions}>
-                <Button
-                  title="Take photo"
-                  onPress={() => pickAndUpload('camera')}
-                  loading={photoBusy === 'camera'}
-                />
-                <Button
-                  title="Choose from library"
-                  variant="secondary"
-                  onPress={() => pickAndUpload('library')}
-                  loading={photoBusy === 'library'}
-                />
-                {profileData?.photoUrl ? (
-                  <Button title="Remove photo" variant="destructive" onPress={handleRemovePhoto} />
-                ) : null}
-                <Button title="Cancel" variant="ghost" onPress={() => setPhotoModalVisible(false)} />
-              </View>
-            </View>
-          </BlurredModal>
+            onClose={() => setPhotoModalVisible(false)}
+            title="Profile photo"
+            body="Pick a photo from your library or take one now. It appears on your profile."
+            actions={[
+              { title: 'Take photo', onPress: () => pickAndUpload('camera'), loading: photoBusy === 'camera' },
+              {
+                title: 'Choose from library',
+                variant: 'secondary',
+                onPress: () => pickAndUpload('library'),
+                loading: photoBusy === 'library',
+              },
+              ...(profileData?.photoUrl
+                ? [{ title: 'Remove photo', variant: 'destructive' as const, onPress: handleRemovePhoto }]
+                : []),
+              { title: 'Cancel', variant: 'secondary', onPress: () => setPhotoModalVisible(false) },
+            ]}
+          />
         </ScrollView>
       </Wrapper>
     </>
@@ -418,15 +404,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 2,
   },
-  modalHint: {
-    opacity: 0.6,
-    fontSize: 13,
-    lineHeight: 18,
-    marginBottom: 16,
-  },
-  photoActions: {
-    gap: 10,
-  },
   identityText: {
     flex: 1,
     gap: 2,
@@ -461,27 +438,5 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 20,
     paddingHorizontal: 6,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,30,36,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 24,
-  },
-  modalContent: {
-    borderRadius: 16,
-    padding: 24,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
   },
 });

@@ -61,7 +61,7 @@ const styles = StyleSheet.create({
   base: {
     minHeight: 48,
     borderRadius: 999,
-    paddingHorizontal: 22,
+    paddingHorizontal: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

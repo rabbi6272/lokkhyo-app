@@ -15,8 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { ThemedText } from '@/components/ThemedText';
 import { Avatar } from '@/components/ui/Avatar';
 import { PageBackground } from '@/components/ui/Wrapper';
-import { BlurredModal } from '@/components/ui/AppBlur';
-import { Button } from '@/components/ui/Button';
+import { AppModal } from '@/components/ui/AppModal';
 import { Section } from '@/components/ui/Section';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { useTheme } from '@/providers/theme-provider';
@@ -156,35 +155,31 @@ export default function ProfileScreen() {
               </Pressable>
             </Section>
 
-            <ThemedText style={styles.versionText}>Lokkhyo · version 1.1.0</ThemedText>
+            <ThemedText style={styles.versionText}>Lokkhyo · version 1.2.0</ThemedText>
           </>
         )}
       </ScrollView>
 
-      <BlurredModal visible={signoutModalVisible} onClose={() => setSignoutModalVisible(false)}>
-        <View style={[styles.modalContent, { backgroundColor: palette.surface }]}>
-          <ThemedText type="title" style={styles.modalTitle}>
-            Sign out?
-          </ThemedText>
-          <ThemedText>
-            Are you sure you want to sign out? You will need to log in again to access your account.
-          </ThemedText>
-          <View style={styles.modalButtons}>
-            <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
-            <Button
-              title="Sign Out"
-              variant="destructive"
-              onPress={async () => {
-                try {
-                  await signOut();
-                } catch {
-                  Alert.alert('Error', 'Failed to sign out. Please try again.');
-                }
-              }}
-            />
-          </View>
-        </View>
-      </BlurredModal>
+      <AppModal
+        visible={signoutModalVisible}
+        onClose={() => setSignoutModalVisible(false)}
+        title="Sign out?"
+        body="Are you sure you want to sign out? You will need to log in again to access your account."
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: () => setSignoutModalVisible(false) },
+          {
+            title: 'Sign out',
+            variant: 'destructive',
+            onPress: async () => {
+              try {
+                await signOut();
+              } catch {
+                Alert.alert('Error', 'Failed to sign out. Please try again.');
+              }
+            },
+          },
+        ]}
+      />
     </PageBackground>
   );
 }
@@ -330,27 +325,5 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     opacity: 0.4,
     fontSize: 12,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,30,36,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    borderRadius: 32,
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
   },
 });

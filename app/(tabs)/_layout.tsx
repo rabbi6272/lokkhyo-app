@@ -1,5 +1,5 @@
 import { Tabs } from 'expo-router';
-import { StyleSheet, Text, View, type ViewStyle } from 'react-native';
+import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { BlurTargetView } from 'expo-blur';
 import { createRef, useRef, type RefObject } from 'react';
 import { useTheme } from '@/providers/theme-provider';
@@ -16,7 +16,7 @@ const TABS = [
 ] as const;
 
 export default function TabLayout() {
-  const { palette, fontFamily } = useTheme();
+  const { palette, radius } = useTheme();
   // One blur target per screen: the tab bar is a sibling of the screens, never inside the view it blurs.
   const targets = useRef(new Map<string, RefObject<View | null>>()).current;
   const targetFor = (key: string) => {
@@ -54,11 +54,9 @@ export default function TabLayout() {
         tabBarBackground: () => (
           <AppBlurView intensity={40} blurTarget={targetFor(route.key)} style={StyleSheet.absoluteFill} />
         ),
-        tabBarLabel: ({ focused, color, children }) => (
-          <Text style={[styles.label, { color, fontFamily: focused ? fontFamily.semibold : fontFamily.medium }]}>
-            {children}
-          </Text>
-        ),
+        // Icons only; `title` still names each tab for screen readers.
+        tabBarShowLabel: false,
+        tabBarIconStyle: styles.iconSlot,
       })}>
       {TABS.map((tab) => (
         <Tabs.Screen
@@ -69,7 +67,14 @@ export default function TabLayout() {
             tabBarIcon: ({ color, focused }) => (
               <View style={styles.iconWrap}>
                 <View style={[styles.marker, focused && { backgroundColor: palette.teal }]} />
-                <SvgIcon name={tab.icon} size={24} color={color} />
+                <View
+                  style={[
+                    styles.iconPill,
+                    { borderRadius: radius.pill },
+                    focused && { backgroundColor: palette.tealSoft },
+                  ]}>
+                  <SvgIcon name={tab.icon} size={28} color={color} />
+                </View>
               </View>
             ),
           }}
@@ -81,8 +86,8 @@ export default function TabLayout() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  label: { fontSize: 12, paddingTop: 2 },
-  iconWrap: { alignItems: 'center', gap: 4 },
-  /** A short bar above the active tab's icon — the only active-state decoration. */
-  marker: { width: 18, height: 3, borderRadius: 2, backgroundColor: 'transparent', marginTop: -6 },
+  iconSlot: { width: '100%', height: '100%' },
+  iconWrap: { alignItems: 'center', gap: 6 },
+  iconPill: { paddingHorizontal: 18, paddingVertical: 6 },
+  marker: { width: 22, height: 4, borderRadius: 2, backgroundColor: 'transparent', marginTop: -6 },
 });

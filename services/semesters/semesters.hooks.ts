@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { gradeKeys } from '@/services/grades/grades.hooks';
 import { profileKeys } from '@/services/profile/profile.hooks';
 
 import {
@@ -45,7 +46,13 @@ export function useUpdateSemester() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateSemesterDto }) => updateSemester(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: semesterKeys.all }),
+    onSuccess: (_semester, { data }) => {
+      void queryClient.invalidateQueries({ queryKey: semesterKeys.all });
+      // A recorded GPA moves the term GPA, the CGPA and degree status.
+      if (data.recordedGpa !== undefined || data.recordedCredits !== undefined) {
+        void queryClient.invalidateQueries({ queryKey: gradeKeys.all });
+      }
+    },
   });
 }
 

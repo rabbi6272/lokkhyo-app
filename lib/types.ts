@@ -19,6 +19,12 @@ export interface Semester {
   targetGpa: number;
   startDate: string;
   totalWeeks: number;
+  /**
+   * An official term GPA entered by hand, with the credits it covers, or null.
+   * When set, the server counts it for this term instead of its course results.
+   */
+  recordedGpa: number | null;
+  recordedCredits: number | null;
   /** ISO-8601 from the API. */
   createdAt: string | null;
 }

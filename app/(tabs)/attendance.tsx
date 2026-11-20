@@ -13,13 +13,16 @@ import { Wrapper } from '@/components/ui/Wrapper';
 import { UnifiedAttendanceCalendar } from '@/components/UnifiedAttendanceCalendar';
 import { Space } from '@/constants/theme';
 import { useTheme } from '@/providers/theme-provider';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useAllCoursesAttendance, useMarkAttendance, type DaySession } from '@/hooks/useAllCoursesAttendance';
 import { EXAM_ELIGIBILITY_THRESHOLD, todayStr } from '@/lib/attendance';
 import { formatTime12h } from '@/lib/routine';
 import { parseTime } from '@/lib/validate';
 
 export default function AttendanceScreen() {
-  const { courseAttendance, sessionsByDate, overall, isLoading } = useAllCoursesAttendance();
+  // Only the active semester's courses.
+  const { courses } = useActiveSemester();
+  const { courseAttendance, sessionsByDate, overall, isLoading } = useAllCoursesAttendance(courses);
   const markAttendance = useMarkAttendance();
   const { palette, statusColor } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);

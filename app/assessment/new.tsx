@@ -1,5 +1,5 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
@@ -60,6 +60,32 @@ export default function AssessmentFormScreen() {
   const [date, setDate] = useState(presetDate ?? today());
   const [teacherName, setTeacherName] = useState('');
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+  /** Fields the user has typed into; prefills never overwrite these. */
+  const edited = useRef(new Set<'maxMarks' | 'weight' | 'teacherName'>());
+
+  // A new mark starts from the last one of the same type in this course, so max
+  // marks, weight and teacher are typed once rather than on every entry.
+  const lastOfType = isEditing
+    ? undefined
+    : assessments
+        .filter((a) => a.type === type)
+        .reduce<(typeof assessments)[number] | undefined>(
+          (latest, a) =>
+            !latest ||
+            a.date.localeCompare(latest.date) > 0 ||
+            (a.date === latest.date && (a.createdAt ?? '').localeCompare(latest.createdAt ?? '') > 0)
+              ? a
+              : latest,
+          undefined,
+        );
+  const onlyTeacher = course?.courseTeachers?.length === 1 ? course.courseTeachers[0] : '';
+
+  useEffect(() => {
+    if (isEditing) return;
+    if (!edited.current.has('maxMarks')) setMaxMarks(lastOfType ? String(lastOfType.maxMarks) : '');
+    if (!edited.current.has('weight')) setWeight(lastOfType ? String(lastOfType.weight) : '');
+    if (!edited.current.has('teacherName')) setTeacherName(lastOfType?.teacherName || onlyTeacher);
+  }, [isEditing, lastOfType, onlyTeacher]);
 
   const prefs = useNotificationPreferences();
   const trimmedDate = date.trim();
@@ -172,6 +198,7 @@ export default function AssessmentFormScreen() {
             keyboardType="numeric"
             value={maxMarks}
             onChangeText={(v) => {
+              edited.current.add('maxMarks');
               setMaxMarks(v);
               setErrors((e) => ({ ...e, maxMarks: null }));
             }}
@@ -183,6 +210,7 @@ export default function AssessmentFormScreen() {
             keyboardType="numeric"
             value={weight}
             onChangeText={(v) => {
+              edited.current.add('weight');
               setWeight(v);
               setErrors((e) => ({ ...e, weight: null }));
             }}
@@ -203,7 +231,10 @@ export default function AssessmentFormScreen() {
             label="Teacher (optional)"
             placeholder="e.g. Dr. John Doe"
             value={teacherName}
-            onChangeText={setTeacherName}
+            onChangeText={(v) => {
+              edited.current.add('teacherName');
+              setTeacherName(v);
+            }}
           />
           {course?.courseTeachers && course.courseTeachers.length > 0 && (
             <View style={[styles.chips, styles.teacherChips]}>
@@ -212,7 +243,10 @@ export default function AssessmentFormScreen() {
                   key={name}
                   label={name}
                   selected={teacherName === name}
-                  onPress={() => setTeacherName(name)}
+                  onPress={() => {
+                    edited.current.add('teacherName');
+                    setTeacherName(name);
+                  }}
                 />
               ))}
             </View>

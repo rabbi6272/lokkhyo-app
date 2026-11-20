@@ -11,7 +11,7 @@ import {
 
 import { ThemedText } from '@/components/ThemedText';
 import { BackStep } from '@/components/ui/BackStep';
-import { BlurredModal } from '@/components/ui/AppBlur';
+import { AppModal } from '@/components/ui/AppModal';
 import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { Field } from '@/components/ui/InputField';
@@ -345,31 +345,23 @@ export default function WhatIfSimulatorScreen() {
         </ScrollView>
       </Wrapper>
 
-      <BlurredModal visible={addModalVisible} onClose={closeAddModal} placement="bottom">
-        <View
-          style={{
-            backgroundColor: palette.surface,
-            borderTopLeftRadius: radius.lg,
-            borderTopRightRadius: radius.lg,
-            padding: space.xl,
-            gap: space.md,
-          }}>
-          <ThemedText type="title" style={{ fontSize: 18 }}>
-            Add a course
-          </ThemedText>
-          <Field label="Course code" required value={newCode} onChangeText={setNewCode} placeholder="e.g. CSE 4101" autoCapitalize="characters" />
-          <Field label="Course title" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Machine Learning" />
-          <Field label="Credits" required value={newCredits} onChangeText={setNewCredits} placeholder="3.0" keyboardType="decimal-pad" />
-          <View style={{ gap: space.xs }}>
-            <ThemedText style={[styles.small, { color: palette.muted }]}>Expected grade</ThemedText>
-            <GradePicker value={newGrade} onChange={setNewGrade} />
-          </View>
-          <View style={[styles.inline, { gap: space.md, marginTop: space.sm }]}>
-            <Button title="Cancel" variant="secondary" onPress={closeAddModal} style={styles.flex} />
-            <Button title="Add" onPress={handleAddCustomCourse} disabled={!canAddCourse} style={styles.flex} />
-          </View>
+      <AppModal
+        visible={addModalVisible}
+        onClose={closeAddModal}
+        placement="bottom"
+        title="Add a course"
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: closeAddModal },
+          { title: 'Add', onPress: handleAddCustomCourse, disabled: !canAddCourse },
+        ]}>
+        <Field label="Course code" required value={newCode} onChangeText={setNewCode} placeholder="e.g. CSE 4101" autoCapitalize="characters" />
+        <Field label="Course title" value={newTitle} onChangeText={setNewTitle} placeholder="e.g. Machine Learning" />
+        <Field label="Credits" required value={newCredits} onChangeText={setNewCredits} placeholder="3.0" keyboardType="decimal-pad" />
+        <View style={{ gap: space.xs }}>
+          <ThemedText style={[styles.small, { color: palette.muted }]}>Expected grade</ThemedText>
+          <GradePicker value={newGrade} onChange={setNewGrade} />
         </View>
-      </BlurredModal>
+      </AppModal>
     </>
   );
 }

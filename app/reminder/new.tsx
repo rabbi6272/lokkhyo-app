@@ -9,6 +9,7 @@ import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
 import { ThemedText } from '@/components/ThemedText';
 import { Wrapper } from '@/components/ui/Wrapper';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useCourses } from '@/hooks/useCourses';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
 import { useUpcomingReminders } from '@/hooks/useUpcomingReminders';
@@ -23,6 +24,7 @@ export default function ReminderFormScreen() {
   const { courseId, reminderId } = useLocalSearchParams<{ courseId?: string; reminderId?: string }>();
   const router = useRouter();
   const { courses } = useCourses();
+  const { courses: activeCourses } = useActiveSemester();
   const { palette } = useTheme();
   const [selectedCourseId, setSelectedCourseId] = useState(courseId ?? '');
   const effectiveCourseId = courseId ?? selectedCourseId;
@@ -102,7 +104,7 @@ export default function ReminderFormScreen() {
             <View style={styles.section}>
               <ThemedText type="defaultSemiBold">Course</ThemedText>
               <View style={styles.chips}>
-                {courses.map((c) => (
+                {activeCourses.map((c) => (
                   <Chip
                     key={c.id}
                     label={c.code}

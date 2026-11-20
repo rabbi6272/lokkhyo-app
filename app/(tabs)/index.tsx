@@ -15,11 +15,9 @@ import { PageHeader } from '@/components/ui/PageHeader';
 import { SectionHeader } from '@/components/ui/SectionHeader';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { useTheme } from '@/providers/theme-provider';
+import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useAllCoursesAttendance } from '@/hooks/useAllCoursesAttendance';
-import { useAllUpcomingReminders } from '@/hooks/useAllUpcomingReminders';
-import { useCourses } from '@/hooks/useCourses';
 import { useNotificationPreferences } from '@/hooks/useNotificationPreferences';
-import { useRoutines } from '@/hooks/useRoutines';
 import { useDeleteUpcomingReminder } from '@/hooks/useUpcomingReminders';
 import { useProfile } from '@/hooks/useUserProfile';
 import { useWidgetSync } from '@/hooks/useWidgetSync';
@@ -35,9 +33,8 @@ export default function HomeScreen() {
   const router = useRouter();
   const { user } = useAuth();
   const { profileData } = useProfile();
-  const { courses } = useCourses();
-  const { slots } = useRoutines();
-  const { reminders } = useAllUpcomingReminders();
+  // Home only shows the active semester: its courses, classes and reminders.
+  const { courses, slots, reminders } = useActiveSemester();
   const deleteUpcoming = useDeleteUpcomingReminder();
   const prefs = useNotificationPreferences();
   const { palette, radius, space } = useTheme();

@@ -4,8 +4,7 @@ import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { BackStep } from '@/components/ui/BackStep';
-import { BlurredModal } from '@/components/ui/AppBlur';
-import { Button } from '@/components/ui/Button';
+import { AppModal } from '@/components/ui/AppModal';
 import { Chip } from '@/components/ui/Chip';
 import { ThemedText } from '@/components/ThemedText';
 import { SvgIcon } from '@/components/ui/SvgIcon';
@@ -130,7 +129,6 @@ export default function SettingsScreen() {
       borderWidth: StyleSheet.hairlineWidth,
     },
   ];
-  const modalContentStyle = [styles.modalContent, { backgroundColor: palette.surface }];
 
   const queryClient = useQueryClient();
   const [prefs, setPrefs] = useState<NotificationPreferences | null>(null);
@@ -351,77 +349,58 @@ export default function SettingsScreen() {
             </Pressable>
           </View>
 
-          <ThemedText style={styles.versionText}>App version 1.0.0</ThemedText>
+          <ThemedText style={styles.versionText}>App version 1.2.0</ThemedText>
 
-          <BlurredModal
+          <AppModal
             visible={signoutModalVisible}
             onClose={() => setSignoutModalVisible(false)}
-          >
-            <View style={modalContentStyle}>
-              <ThemedText type="title" style={styles.modalTitle}>
-                Sign out?
-              </ThemedText>
-              <ThemedText>
-                Are you sure you want to sign out? You will need to log in again to access your account.
-              </ThemedText>
-              <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="ghost" onPress={() => setSignoutModalVisible(false)} />
-                <Button
-                  title="Sign Out"
-                  variant="destructive"
-                  onPress={async () => {
-                    try {
-                      await signOut();
-                    } catch {
-                      Alert.alert('Error', 'Failed to sign out. Please try again.');
-                    }
-                  }}
-                />
-              </View>
-            </View>
-          </BlurredModal>
+            title="Sign out?"
+            body="Are you sure you want to sign out? You will need to log in again to access your account."
+            actions={[
+              { title: 'Cancel', variant: 'secondary', onPress: () => setSignoutModalVisible(false) },
+              {
+                title: 'Sign out',
+                variant: 'destructive',
+                onPress: async () => {
+                  try {
+                    await signOut();
+                  } catch {
+                    Alert.alert('Error', 'Failed to sign out. Please try again.');
+                  }
+                },
+              },
+            ]}
+          />
 
-          <BlurredModal
+          <AppModal
             visible={editingTime !== null}
             onClose={() => setEditingTime(null)}
-          >
-            <View style={modalContentStyle}>
-              <ThemedText type="title" style={styles.modalTitle}>
-                {editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
-              </ThemedText>
-              <ThemedText>{editingTime ? TIME_PICKER_COPY[editingTime].body : ''}</ThemedText>
-              <TimePicker
-                hour={pendingHour}
-                minute={pendingMinute}
-                onSelect={(hour, minute) => {
-                  setPendingHour(hour);
-                  setPendingMinute(minute);
-                }}
-              />
-              <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="ghost" onPress={() => setEditingTime(null)} />
-                <Button title="Save" onPress={handleConfirmTime} />
-              </View>
-            </View>
-          </BlurredModal>
+            title={editingTime ? TIME_PICKER_COPY[editingTime].title : 'Reminder time'}
+            body={editingTime ? TIME_PICKER_COPY[editingTime].body : undefined}
+            actions={[
+              { title: 'Cancel', variant: 'secondary', onPress: () => setEditingTime(null) },
+              { title: 'Save', onPress: handleConfirmTime },
+            ]}>
+            <TimePicker
+              hour={pendingHour}
+              minute={pendingMinute}
+              onSelect={(hour, minute) => {
+                setPendingHour(hour);
+                setPendingMinute(minute);
+              }}
+            />
+          </AppModal>
 
-          <BlurredModal
+          <AppModal
             visible={deleteModalVisible}
             onClose={() => setDeleteModalVisible(false)}
-          >
-            <View style={modalContentStyle}>
-              <ThemedText type="title" style={styles.modalTitle}>
-                Delete account?
-              </ThemedText>
-              <ThemedText>
-                This permanently deletes your profile and signs you out. This action cannot be undone.
-              </ThemedText>
-              <View style={styles.modalButtons}>
-                <Button title="Cancel" variant="ghost" onPress={() => setDeleteModalVisible(false)} disabled={deleting} />
-                <Button title="Delete" variant="destructive" onPress={handleDeleteAccount} loading={deleting} />
-              </View>
-            </View>
-          </BlurredModal>
+            title="Delete account?"
+            body="This permanently deletes your profile and signs you out. This action cannot be undone."
+            actions={[
+              { title: 'Cancel', variant: 'secondary', onPress: () => setDeleteModalVisible(false), disabled: deleting },
+              { title: 'Delete', variant: 'destructive', onPress: handleDeleteAccount, loading: deleting },
+            ]}
+          />
         </ScrollView>
       </Wrapper>
     </>
@@ -570,27 +549,5 @@ const styles = StyleSheet.create({
     opacity: 0.4,
     fontSize: 12,
     marginBottom: 24,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(15,30,36,0.45)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  modalContent: {
-    borderRadius: 32,
-    padding: 20,
-    width: '100%',
-    maxWidth: 400,
-  },
-  modalTitle: {
-    marginBottom: 16,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    gap: 12,
-    marginTop: 8,
   },
 });

@@ -16,6 +16,10 @@ export interface SemesterDto {
   status: SemesterStatusDto;
   targetGpa: number | null;
   totalWeeks: number | null;
+  /** An official term GPA entered by hand; set together with `recordedCredits`. */
+  recordedGpa: number | null;
+  /** The credit hours `recordedGpa` covers. */
+  recordedCredits: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +30,8 @@ export interface CreateSemesterDto {
   totalWeeks: number;
   status?: SemesterStatusDto;
   targetGpa?: number | null;
+  recordedGpa?: number | null;
+  recordedCredits?: number | null;
 }
 
 export type UpdateSemesterDto = Partial<CreateSemesterDto>;
