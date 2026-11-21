@@ -10,9 +10,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build:dev": "npx eas build --profile development --platform android --local",
-    "build:apk": "npx expo prebuild && npx eas build --profile production --platform android --local",
-    "build:android": "npx expo prebuild && npx eas build --profile production --platform android",
-    "build:preview": "npx expo prebuild && npx eas build --profile preview --platform android --local",
+    "build:apk": "npx expo prebuild platform android --clean --platform android && npx eas build --profile production --platform android --local",
+    "build:android": "npx expo prebuild --platform android && npx eas build --profile production --platform android",
+    "build:preview": "npx expo prebuild --platform android && npx eas build --profile preview --platform android --local",
     "build:ios": "npx expo prebuild --clean && npx eas build --profile production --platform ios",
     "ios": "expo run:ios"
   },
