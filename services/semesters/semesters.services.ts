@@ -22,7 +22,12 @@ export function toSemester(dto: SemesterDto): Semester {
 }
 
 /** The fields a semester form collects → `POST /semesters`. */
-export type NewSemester = Pick<Semester, 'name' | 'targetGpa' | 'startDate' | 'totalWeeks'>;
+export type NewSemester = Pick<Semester, 'name' | 'targetGpa' | 'startDate' | 'totalWeeks'> & {
+  /** A finished term added for its official GPA: created archived, not made current. */
+  past?: boolean;
+  recordedGpa?: number | null;
+  recordedCredits?: number | null;
+};
 
 /**
  * Sort weight for a term: the one the student is in first, then other live
@@ -51,7 +56,10 @@ export function toCreateSemesterInput(data: NewSemester): CreateSemesterDto {
     totalWeeks: data.totalWeeks,
     // 0 is how the forms say "no target"; the server's word for that is null.
     targetGpa: data.targetGpa > 0 ? data.targetGpa : null,
-    status: 'ACTIVE',
+    status: data.past ? 'ARCHIVED' : 'ACTIVE',
+    ...(data.recordedGpa != null && data.recordedCredits != null
+      ? { recordedGpa: data.recordedGpa, recordedCredits: data.recordedCredits }
+      : {}),
   };
 }
 

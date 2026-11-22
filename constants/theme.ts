@@ -2,85 +2,88 @@
  * Lokkhyo's design tokens. Every colour, size and type style in the app comes
  * from here, so screens stay consistent and a change lands everywhere at once.
  *
- * Direction: quiet and precise. A cool mist page, white cards with hairlines
- * instead of shadows, one brand colour (deep teal) for action and focus, and
- * three status colours used only to mean something (on track / close / at
- * risk). The one signature: progress is always drawn against its *target*
- * (লক্ষ্য), so every figure shows where you are relative to where you need to be.
+ * Direction: a neutral grey page with white cards in light mode, a deep
+ * blue-black navy with raised indigo-grey cards in dark mode, one brand colour
+ * (forest green) for action and focus, and three status colours used only to
+ * mean something (on track / close / at risk). Progress is always drawn
+ * against its *target* (লক্ষ্য).
+ *
+ * Note: the brand keys are still named `teal*` so existing screens keep
+ * working; they now hold the green brand colour.
  */
 
-// Light palette (existing)
+// Light palette
 export const lightPalette = {
-  /** Body text and headings: near-black with a teal undertone. */
-  ink: '#0F1E24',
+  /** Body text and headings. */
+  ink: '#0B0D16',
   /** Secondary text, captions, inactive icons. */
-  muted: '#62757C',
+  muted: 'rgba(0,0,0,0.6)',
   /** Placeholder text and disabled foregrounds. */
-  faint: '#9AAAB0',
-  /** Page background behind cards: cool, not cream. */
-  mist: '#F2F5F5',
+  faint: 'rgba(0,0,0,0.4)',
+  /** Page background behind cards. */
+  mist: '#F0F0F0',
   /** Card surfaces. */
   surface: '#FFFFFF',
   /** Hairline borders and dividers. */
-  line: '#E2E8E9',
+  line: '#E2E2E2',
 
   /** Brand: primary actions, focus, the hero card. */
-  teal: '#0A5566',
+  teal: '#017A47',
   /** Pressed / emphasised brand. */
-  tealDeep: '#073F4C',
+  tealDeep: '#004F2E',
   /** Brand tint for selected chips, secondary buttons, rings' tracks. */
-  tealSoft: '#E3F0F2',
+  tealSoft: '#017A471A',
   /** Light text and marks sitting on `teal`. */
-  tealOnDark: '#9ED9E6',
+  tealOnDark: '#B3D2C5',
   /** High-contrast foreground sitting directly on `teal`. */
   onTeal: '#FFFFFF',
 
   /** Status: on track. */
-  good: '#1F8F6A',
-  goodSoft: '#E2F3EC',
+  good: '#189918',
+  goodSoft: '#1899181A',
   /** Status: close to the target line. */
-  warn: '#C27A12',
-  warnSoft: '#FBF0DF',
+  warn: '#F79329',
+  warnSoft: '#F793291A',
   /** Status: below target, destructive actions. */
-  risk: '#C8423B',
-  riskSoft: '#FBE7E5',
+  risk: '#C31B21',
+  riskSoft: '#C31B211A',
 } as const;
 
 // Dark palette
 export const darkPalette = {
   /** Body text and headings. */
-  ink: '#F2F5F5',
+  ink: '#FFFFFF',
   /** Secondary text, captions, inactive icons. */
-  muted: '#9AAAB0',
+  muted: '#7A7D8C',
   /** Placeholder text and disabled foregrounds. */
-  faint: '#62757C',
+  faint: '#707070',
   /** Page background behind cards. */
-  mist: '#0F1E24',
+  mist: '#0B0D16',
   /** Card surfaces. */
-  surface: '#16272E',
+  surface: '#181821',
   /** Hairline borders and dividers. */
-  line: '#1E3A44',
+  line: '#2B2B35',
 
-  /** Brand: primary actions, focus, the hero card. Natural ocean teal. */
-  teal: '#2AA8B4',
+  /** Brand: primary actions, focus, the hero card. */
+  teal: '#017A47',
   /** Pressed / emphasised brand. */
-  tealDeep: '#1F8F9A',
+  tealDeep: '#004F2E',
   /** Brand tint for selected chips, secondary buttons, rings' tracks. */
-  tealSoft: '#103940',
-  /** Softer seafoam mark sitting on dark backgrounds or subtle brand badges. */
-  tealOnDark: '#7ED4DE',
+  tealSoft: '#017A4730',
+  /** Light text and marks sitting on `teal`. */
+  tealOnDark: '#B3D2C5',
   /** High-contrast foreground sitting directly on `teal`. */
   onTeal: '#FFFFFF',
 
   /** Status: on track. */
-  good: '#4ADE80',
-  goodSoft: '#0A3D2E',
+  good: '#146414',
+  goodSoft: '#14641430',
   /** Status: close to the target line. */
-  warn: '#FBBF24',
-  warnSoft: '#3D320A',
+  warn: '#F79329',
+  warnSoft: '#F7932930',
   /** Status: below target, destructive actions. */
-  risk: '#F87171',
-  riskSoft: '#3D0A0A',
+  risk: '#C31B21',
+  riskSoft: '#C31B2130',
 } as const;
 
 export type Palette = Record<keyof typeof lightPalette, string>;

@@ -21,12 +21,15 @@
       "googleServicesFile": "./google-services.json"
     },
     "plugins": [
+      "./plugins/withAndroidTextFix",
       "expo-router",
       [
         "expo-splash-screen",
         {
           "image": "./assets/images/splash.png",
-          "resizeMode": "contain",
+          "imageWidth": "250",
+          "imageHeight": "250",
+          "resizeMode": "cover",
           "backgroundColor": "#ffffff",
           "dark": {
             "backgroundColor": "#ffffff"

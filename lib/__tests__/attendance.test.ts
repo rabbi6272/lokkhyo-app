@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { RoutineSlot } from '@/lib/types';
 import {
   EXAM_ELIGIBILITY_THRESHOLD,
+  slotPeriods,
   computeAttendanceStats,
   generateSessionOccurrences,
   mergeSessionsWithRecords,
@@ -161,5 +162,37 @@ describe('mergeSessionsWithRecords', () => {
     const occurrences = generateSessionOccurrences([slot({ id: 's1', dayOfWeek: 0 })], '2026-10-24', 2);
     const merged = mergeSessionsWithRecords(occurrences, [], '2026-10-25');
     expect(merged.map((m) => m.isFuture)).toEqual([false, true]);
+  });
+});
+
+describe('double periods', () => {
+  it('counts a 100-minute class as two attendances', () => {
+    const sessions = [
+      session({ date: '2026-10-01', slotId: 's1', startTime: '09:00', endTime: '10:40', status: 'present' }),
+      session({ date: '2026-10-02', slotId: 's2', startTime: '09:00', endTime: '09:50', status: 'absent' }),
+    ];
+    const stats = computeAttendanceStats(sessions);
+    expect(stats.present).toBe(2);
+    expect(stats.absent).toBe(1);
+    expect(stats.held).toBe(3);
+    expect(stats.percent).toBe(67);
+  });
+
+  it('counts a 150-minute lab session once', () => {
+    const sessions = [
+      session({ date: '2026-10-01', slotId: 's1', startTime: '14:30', endTime: '17:00', status: 'present' }),
+      session({ date: '2026-10-08', slotId: 's1', startTime: '14:30', endTime: '17:00', status: 'absent' }),
+    ];
+    const stats = computeAttendanceStats(sessions, { isLab: true });
+    expect(stats.present).toBe(1);
+    expect(stats.held).toBe(2);
+  });
+
+  it('maps slot length to periods', () => {
+    expect(slotPeriods('08:00', '08:50')).toBe(1);
+    expect(slotPeriods('08:00', '09:15')).toBe(1);
+    expect(slotPeriods('08:00', '09:40')).toBe(2);
+    expect(slotPeriods('14:30', '17:00')).toBe(3);
+    expect(slotPeriods('10:00', '10:00')).toBe(1);
   });
 });

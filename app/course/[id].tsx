@@ -1,11 +1,12 @@
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, findNodeHandle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, findNodeHandle, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AttendanceMeter } from '@/components/AttendanceMeter';
 import { FinalGradeCard } from '@/components/grades/FinalGradeCard';
 import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
+import { AppModal } from '@/components/ui/AppModal';
 import { BackStep } from '@/components/ui/BackStep';
 import { Card, Divider } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -46,6 +47,12 @@ export default function CourseDetailScreen() {
   const scrollRef = useRef<ScrollView>(null);
   const rowRefs = useRef<Record<string, View | null>>({});
   const [highlightId, setHighlightId] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState<{ title: string; body: string; action: string; onConfirm: () => void } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const askConfirm = (request: { title: string; body: string; action: string; onConfirm: () => void }) => {
+    setConfirm(request);
+    setConfirmOpen(true);
+  };
 
   const highlightKey = highlightReminderId
     ? `rm:${highlightReminderId}`
@@ -81,17 +88,21 @@ export default function CourseDetailScreen() {
   const belowPass = passMarks !== undefined && percent < passMarks;
 
   const handleDelete = (assessmentId: string, name: string) => {
-    Alert.alert('Delete mark', `Delete "${name}"? This also removes it from your CT progress.`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteAssessment.mutate(assessmentId) },
-    ]);
+    askConfirm({
+      title: 'Delete mark',
+      body: `Delete "${name}"? This also removes it from your CT progress.`,
+      action: 'Delete',
+      onConfirm: () => deleteAssessment.mutate(assessmentId),
+    });
   };
 
   const handleDeleteReminder = (reminderId: string, name: string) => {
-    Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteReminder.mutate(reminderId) },
-    ]);
+    askConfirm({
+      title: 'Delete reminder',
+      body: `Remove the reminder for "${name}"?`,
+      action: 'Delete',
+      onConfirm: () => deleteReminder.mutate(reminderId),
+    });
   };
 
   if (isCoursesLoading || isAssessmentsLoading) {
@@ -225,10 +236,10 @@ export default function CourseDetailScreen() {
                       pressed && { opacity: 0.7 },
                     ]}>
                     <View style={styles.markText}>
-                      <ThemedText type="defaultSemiBold" numberOfLines={1}>
+                      <ThemedText type="defaultSemiBold">
                         {a.name}
                       </ThemedText>
-                      <ThemedText type="caption" numberOfLines={1}>
+                      <ThemedText type="caption">
                         {ASSESSMENT_TYPE_LABELS[a.type]} · {formatDateLabel(a.date)}
                         {a.teacherName ? ` · ${a.teacherName}` : ''}
                       </ThemedText>
@@ -259,6 +270,24 @@ export default function CourseDetailScreen() {
         </Card>
       </ScrollView>
       </Wrapper>
+
+      <AppModal
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={confirm?.title ?? ''}
+        body={confirm?.body}
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: () => setConfirmOpen(false) },
+          {
+            title: confirm?.action ?? 'Delete',
+            variant: 'destructive',
+            onPress: () => {
+              confirm?.onConfirm();
+              setConfirmOpen(false);
+            },
+          },
+        ]}
+      />
     </>
   );
 }

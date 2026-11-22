@@ -60,9 +60,9 @@ export function CourseCard({ course, assessments = [], results, inline }: Course
       <View style={textStyle}>
         <View style={titleRowStyle}>
           <ThemedText type="defaultSemiBold">{course.code}</ThemedText>
-          <ThemedText type="caption">{course.credits} cr</ThemedText>
+          <ThemedText type="caption" numberOfLines={1}>{course.credits}&nbsp;cr</ThemedText>
         </View>
-        <ThemedText type="caption" numberOfLines={1}>
+        <ThemedText type="caption">
           {course.title}
         </ThemedText>
         {graded && (

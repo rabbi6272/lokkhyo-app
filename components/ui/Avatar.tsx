@@ -83,7 +83,7 @@ export function Avatar({ name, photoUrl, size = 60, tone = 'onPage' }: AvatarPro
         <SvgIcon
           name="user"
           size={size * 0.46}
-          color={tone === 'onTeal' ? (resolved === 'dark' ? '#073F4C' : palette.tealOnDark) : palette.muted}
+          color={tone === 'onTeal' ? (resolved === 'dark' ? palette.tealDeep : palette.tealOnDark) : palette.muted}
         />
       )}
     </View>

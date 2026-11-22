@@ -67,7 +67,7 @@ export default function CoursesScreen() {
             <View style={styles.group}>
               <View style={[styles.groupHeader, { borderBottomColor: palette.line }]}>
                 <View style={styles.groupTitle}>
-                  <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.groupName}>
+                  <ThemedText type="defaultSemiBold" style={styles.groupName}>
                     {semester?.name ?? 'Current semester'}
                   </ThemedText>
                   <ThemedText type="eyebrow" color={palette.teal}>

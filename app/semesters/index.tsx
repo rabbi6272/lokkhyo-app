@@ -80,7 +80,7 @@ export default function SemestersScreen() {
                     <View style={styles.row}>
                       <View style={styles.text}>
                         <View style={styles.titleRow}>
-                          <ThemedText type="defaultSemiBold" numberOfLines={1} style={styles.name}>
+                          <ThemedText type="defaultSemiBold" style={styles.name}>
                             {semester.name}
                           </ThemedText>
                           {isCurrent(semester) ? (
@@ -93,7 +93,7 @@ export default function SemestersScreen() {
                             </ThemedText>
                           ) : null}
                         </View>
-                        <ThemedText type="caption" numberOfLines={1}>
+                        <ThemedText type="caption">
                           {semester.startDate} · {semester.totalWeeks} weeks · {termCourses.length}{' '}
                           {termCourses.length === 1 ? 'course' : 'courses'} · {credits} cr
                         </ThemedText>

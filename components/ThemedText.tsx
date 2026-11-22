@@ -1,4 +1,4 @@
-import { Text, type TextProps, type TextStyle } from 'react-native';
+import { Platform, Text, type TextProps, type TextStyle } from 'react-native';
 import { useTheme } from '@/providers/theme-provider';
 import { typeScale, type Palette } from '@/constants/theme';
 
@@ -22,10 +22,17 @@ export type ThemedTextProps = TextProps & {
  * All app text. Types map onto the type scale in `constants/theme`; the older
  * names (`subtitle`, `defaultSemiBold`, …) are kept so existing screens follow.
  */
-export function ThemedText({ style, color, type = 'default', ...rest }: ThemedTextProps) {
+export function ThemedText({
+  style,
+  color,
+  type = 'default',
+  textBreakStrategy = 'simple',
+  ...rest
+}: ThemedTextProps) {
   const { palette, fontFamily } = useTheme();
   return (
     <Text
+      textBreakStrategy={textBreakStrategy}
       style={[
         baseStyle(palette),
         textStyles[type]?.(palette, fontFamily),
@@ -37,7 +44,10 @@ export function ThemedText({ style, color, type = 'default', ...rest }: ThemedTe
   );
 }
 
-const baseStyle = (palette: Palette): TextStyle => ({ color: palette.ink });
+const baseStyle = (palette: Palette): TextStyle => ({
+  color: palette.ink,
+  ...(Platform.OS === 'android' ? { paddingRight: 2 } : null),
+});
 
 const textStyles: Record<string, (palette: Palette, fontFamily: any) => TextStyle> = {
   default: () => ({ ...typeScale.body }),

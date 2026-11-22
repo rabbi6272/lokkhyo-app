@@ -93,7 +93,7 @@ export function FinalGradeCard({ courseId }: { courseId: string }) {
             </ThemedText>
           )}
         </View>
-        <Button title={counted ? 'Regrade' : 'Record'} variant="secondary" onPress={open} style={styles.action} />
+        <Button title={counted ? 'Regrade' : 'Record'} variant="secondary" onPress={open} />
       </View>
 
       <AppModal

@@ -1,16 +1,18 @@
 import { useRouter } from 'expo-router';
 import { useTheme } from '@/providers/theme-provider';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
+import { AppModal } from '@/components/ui/AppModal';
 import { Button } from '@/components/ui/Button';
 import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
+import { TimePicker, toHHMM } from '@/components/ui/TimePicker';
 import { useActiveSemester } from '@/hooks/useActiveSemester';
 import { useRoutines } from '@/hooks/useRoutines';
 import { DAY_NAMES, DAY_SHORT_NAMES } from '@/lib/constants';
-import { getTodayOfWeek } from '@/lib/routine';
+import { formatTime12h, getTodayOfWeek } from '@/lib/routine';
 import { isTime, parseTime } from '@/lib/validate';
 import { Wrapper } from '@/components/ui/Wrapper';
 import { BackStep } from '@/components/ui/BackStep';
@@ -28,14 +30,42 @@ export default function NewRoutineSlotScreen() {
   const [endTime, setEndTime] = useState('');
   const [room, setRoom] = useState('');
   const [errors, setErrors] = useState<Record<string, string | null>>({});
+  const [editingTime, setEditingTime] = useState<'startTime' | 'endTime' | null>(null);
+  const [pendingHour, setPendingHour] = useState(9);
+  const [pendingMinute, setPendingMinute] = useState(0);
+
+  const openTimePicker = (target: 'startTime' | 'endTime') => {
+    const current = target === 'startTime' ? startTime : endTime;
+    if (current) {
+      const [h, m] = current.split(':').map(Number);
+      setPendingHour(h);
+      setPendingMinute(m);
+    } else if (target === 'endTime' && startTime) {
+      const [h, m] = startTime.split(':').map(Number);
+      setPendingHour(Math.min(h + 1, 23));
+      setPendingMinute(m);
+    } else {
+      setPendingHour(9);
+      setPendingMinute(0);
+    }
+    setEditingTime(target);
+  };
+
+  const confirmTime = () => {
+    const value = toHHMM(pendingHour, pendingMinute);
+    if (editingTime === 'startTime') setStartTime(value);
+    if (editingTime === 'endTime') setEndTime(value);
+    if (editingTime) setErrors((e) => ({ ...e, [editingTime]: null }));
+    setEditingTime(null);
+  };
 
   const selectedCourse = courses.find((c) => c.id === courseId);
 
   const handleSubmit = async () => {
     const nextErrors: Record<string, string | null> = {
       courseId: courseId ? null : 'Select a course.',
-      startTime: isTime(startTime),
-      endTime: isTime(endTime),
+      startTime: startTime ? isTime(startTime) : 'Choose a start time.',
+      endTime: endTime ? isTime(endTime) : 'Choose an end time.',
     };
     if (!nextErrors.startTime && !nextErrors.endTime) {
       if (parseTime(endTime) <= parseTime(startTime)) {
@@ -100,26 +130,36 @@ export default function NewRoutineSlotScreen() {
             {errors.courseId ? <Text style={[styles.error, { color: palette.risk }]}>{errors.courseId}</Text> : null}
           </View>
 
-          <Field
-            label="Start time (HH:MM, 24h)"
-            placeholder="09:30"
-            value={startTime}
-            onChangeText={(v) => {
-              setStartTime(v);
-              setErrors((e) => ({ ...e, startTime: null }));
-            }}
-            error={errors.startTime}
-          />
-          <Field
-            label="End time (HH:MM, 24h)"
-            placeholder="10:30"
-            value={endTime}
-            onChangeText={(v) => {
-              setEndTime(v);
-              setErrors((e) => ({ ...e, endTime: null }));
-            }}
-            error={errors.endTime}
-          />
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose start time"
+            onPress={() => openTimePicker('startTime')}>
+            {/* The read-only input is display only; the Pressable takes the tap. */}
+            <View style={styles.noTouch}>
+              <Field
+                label="Start time"
+                placeholder="Tap to choose"
+                value={startTime ? formatTime12h(startTime) : ''}
+                editable={false}
+                error={errors.startTime}
+              />
+            </View>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Choose end time"
+            onPress={() => openTimePicker('endTime')}>
+            {/* The read-only input is display only; the Pressable takes the tap. */}
+            <View style={styles.noTouch}>
+              <Field
+                label="End time"
+                placeholder="Tap to choose"
+                value={endTime ? formatTime12h(endTime) : ''}
+                editable={false}
+                error={errors.endTime}
+              />
+            </View>
+          </Pressable>
           <Field
             label="Room (optional)"
             placeholder="e.g. Room 405"
@@ -134,6 +174,24 @@ export default function NewRoutineSlotScreen() {
           />
         </ScrollView>
       </Wrapper>
+
+      <AppModal
+        visible={editingTime !== null}
+        onClose={() => setEditingTime(null)}
+        title={editingTime === 'endTime' ? 'End time' : 'Start time'}
+        actions={[
+          { title: 'Cancel', variant: 'ghost', onPress: () => setEditingTime(null) },
+          { title: 'Save', onPress: confirmTime },
+        ]}>
+        <TimePicker
+          hour={pendingHour}
+          minute={pendingMinute}
+          onSelect={(hour, minute) => {
+            setPendingHour(hour);
+            setPendingMinute(minute);
+          }}
+        />
+      </AppModal>
     </>
   );
 }
@@ -141,6 +199,9 @@ export default function NewRoutineSlotScreen() {
 const styles = StyleSheet.create({
   flex: {
     flex: 1,
+  },
+  noTouch: {
+    pointerEvents: 'none',
   },
   title: {
     marginBottom: 24,

@@ -1,11 +1,12 @@
 import { useNavigation, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, View } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { BackStep } from '@/components/ui/BackStep';
 import { AppModal } from '@/components/ui/AppModal';
 import { Chip } from '@/components/ui/Chip';
+import { TimePicker, toHHMM } from '@/components/ui/TimePicker';
 import { ThemedText } from '@/components/ThemedText';
 import { SvgIcon } from '@/components/ui/SvgIcon';
 import { Wrapper } from '@/components/ui/Wrapper';
@@ -36,10 +37,6 @@ import { getUpcomingAssessmentRemindersForUser } from '@/services/notifications/
  */
 const SHOW_ATTENDANCE_ROWS = Platform.OS === 'android';
 
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => hour);
-const MINUTE_STEP = 5;
-const MINUTE_OPTIONS = Array.from({ length: 60 / MINUTE_STEP }, (_, i) => i * MINUTE_STEP);
-
 type TimeTarget = 'morning' | 'evening' | 'assessment';
 
 const TIME_PICKER_COPY: Record<TimeTarget, { title: string; body: string }> = {
@@ -56,62 +53,6 @@ const TIME_PICKER_COPY: Record<TimeTarget, { title: string; body: string }> = {
     body: 'The time of day each daily assessment reminder arrives.',
   },
 };
-
-function toHHMM(hour: number, minute: number): string {
-  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-}
-
-/**
- * Two scrollable columns of pills — an hour and a minute — so a reminder time
- * can be any moment in the day rather than the nine morning slots the old list
- * offered. Built from the existing Chip rather than a native date picker, so
- * it adds no dependency and needs no dev-client rebuild.
- */
-function TimePicker({
-  hour,
-  minute,
-  onSelect,
-}: {
-  hour: number;
-  minute: number;
-  onSelect: (hour: number, minute: number) => void;
-}) {
-  return (
-    <View style={styles.pickerWrap}>
-      <ThemedText type="title" style={styles.pickerReadout}>
-        {formatTime12h(toHHMM(hour, minute))}
-      </ThemedText>
-      <View style={styles.pickerColumns}>
-        <View style={styles.pickerColumn}>
-          <ThemedText style={styles.pickerHeading}>Hour</ThemedText>
-          <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
-            {HOUR_OPTIONS.map((h) => (
-              <Chip
-                key={h}
-                label={String(h).padStart(2, '0')}
-                selected={h === hour}
-                onPress={() => onSelect(h, minute)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-        <View style={styles.pickerColumn}>
-          <ThemedText style={styles.pickerHeading}>Minute</ThemedText>
-          <ScrollView style={styles.pickerList} contentContainerStyle={styles.pickerListContent}>
-            {MINUTE_OPTIONS.map((m) => (
-              <Chip
-                key={m}
-                label={String(m).padStart(2, '0')}
-                selected={m === minute}
-                onPress={() => onSelect(hour, m)}
-              />
-            ))}
-          </ScrollView>
-        </View>
-      </View>
-    </View>
-  );
-}
 
 export default function SettingsScreen() {
   const navigation = useNavigation();
@@ -140,6 +81,12 @@ export default function SettingsScreen() {
   const [pendingHour, setPendingHour] = useState(7);
   const [pendingMinute, setPendingMinute] = useState(0);
   const [deleting, setDeleting] = useState(false);
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const showNotice = (title: string, body: string) => {
+    setNotice({ title, body });
+    setNoticeOpen(true);
+  };
 
   const { data: upcomingData, isLoading: isUpcomingLoading } = useQuery({
     queryKey: ['upcomingAssessmentReminders', user?.uid],
@@ -254,12 +201,12 @@ export default function SettingsScreen() {
       setDeleting(false);
       setDeleteModalVisible(false);
       if (error?.code === 'auth/requires-recent-login') {
-        Alert.alert(
+        showNotice(
           'Please sign in again',
           'For your security, sign out and log back in, then try deleting your account again.',
         );
       } else {
-        Alert.alert('Error', 'Failed to delete account. Please try again.');
+        showNotice('Error', 'Failed to delete account. Please try again.');
       }
     }
   };
@@ -365,7 +312,8 @@ export default function SettingsScreen() {
                   try {
                     await signOut();
                   } catch {
-                    Alert.alert('Error', 'Failed to sign out. Please try again.');
+                    setSignoutModalVisible(false);
+                    showNotice('Error', 'Failed to sign out. Please try again.');
                   }
                 },
               },
@@ -400,6 +348,14 @@ export default function SettingsScreen() {
               { title: 'Cancel', variant: 'secondary', onPress: () => setDeleteModalVisible(false), disabled: deleting },
               { title: 'Delete', variant: 'destructive', onPress: handleDeleteAccount, loading: deleting },
             ]}
+          />
+
+          <AppModal
+            visible={noticeOpen}
+            onClose={() => setNoticeOpen(false)}
+            title={notice?.title ?? ''}
+            body={notice?.body}
+            actions={[{ title: 'OK', onPress: () => setNoticeOpen(false) }]}
           />
         </ScrollView>
       </Wrapper>
@@ -503,35 +459,6 @@ const styles = StyleSheet.create({
   menuValue: {
     opacity: 0.5,
     fontSize: 14,
-  },
-  pickerWrap: {
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  pickerReadout: {
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  pickerColumns: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  pickerColumn: {
-    flex: 1,
-  },
-  pickerHeading: {
-    opacity: 0.5,
-    fontSize: 12,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  pickerList: {
-    maxHeight: 220,
-  },
-  pickerListContent: {
-    gap: 8,
-    alignItems: 'center',
-    paddingBottom: 8,
   },
   toggleTextWrap: {
     flex: 1,

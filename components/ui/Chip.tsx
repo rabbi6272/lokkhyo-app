@@ -1,4 +1,4 @@
-import { Pressable, Text, type TextStyle, type ViewStyle } from 'react-native';
+import { Platform, Pressable, Text, type TextStyle, type ViewStyle } from 'react-native';
 import { useTheme } from '@/providers/theme-provider';
 import type { Palette, Theme } from '@/constants/theme';
 
@@ -22,7 +22,11 @@ export function Chip({ label, selected, onPress }: ChipProps) {
         selected ? styles.selected(palette) : styles.idle(palette),
         pressed && { opacity: 0.8 },
       ]}>
-      <Text style={[styles.label, { color: selected ? palette.onTeal : palette.ink }]}>{label}</Text>
+      <Text
+        textBreakStrategy="simple"
+        style={[styles.label, { color: selected ? palette.onTeal : palette.ink }]}>
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -37,5 +41,9 @@ const styles = {
   }),
   idle: (palette: Palette): ViewStyle => ({ backgroundColor: palette.surface, borderColor: palette.line }),
   selected: (palette: Palette): ViewStyle => ({ backgroundColor: palette.teal, borderColor: palette.teal }),
-  label: { fontFamily: 'InterMedium', fontSize: 14 } as TextStyle,
+  label: {
+    fontFamily: 'InterMedium',
+    fontSize: 14,
+    ...(Platform.OS === 'android' ? { paddingRight: 2 } : null),
+  } as TextStyle,
 };

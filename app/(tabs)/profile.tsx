@@ -2,7 +2,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StatusBar,
@@ -14,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/ThemedText';
 import { Avatar } from '@/components/ui/Avatar';
+import { Button } from '@/components/ui/Button';
 import { PageBackground } from '@/components/ui/Wrapper';
 import { AppModal } from '@/components/ui/AppModal';
 import { Section } from '@/components/ui/Section';
@@ -35,35 +35,43 @@ export default function ProfileScreen() {
   const isDark = resolved === 'dark';
   const router = useRouter();
   const [signoutModalVisible, setSignoutModalVisible] = useState(false);
+  const [signOutFailed, setSignOutFailed] = useState(false);
 
   const currentSemester = semesters.find((s) => s.id === profileData?.currentSemesterId);
   const fullName = profileData?.fullName || user?.displayName || 'Student';
   const email = user?.email ?? '';
+  const studyLine = [profileData?.department, profileData?.university].filter(Boolean).join(' · ');
+  const hasCgpa = cgpa?.cgpa != null;
 
   return (
     <PageBackground>
-      <StatusBar barStyle={isDark ? 'light-content' : 'light-content'} backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor="transparent" translucent />
 
       <SafeAreaView
         edges={['top']}
         style={[
           styles.masthead,
           {
-            backgroundColor: isDark ? palette.surface : palette.teal,
-            borderColor: palette.line,
-            borderBottomWidth: isDark ? StyleSheet.hairlineWidth : 0,
+            // Light: same soft fill and edge as the secondary button (an opaque
+            // surface with the brand tint at half strength). Dark: a plain card.
+            backgroundColor: palette.surface,
+            borderColor: isDark ? palette.line : palette.tealSoft,
+            borderBottomWidth: StyleSheet.hairlineWidth,
           },
         ]}>
+        {!isDark ? (
+          <View style={[StyleSheet.absoluteFill, styles.mastheadTint, { backgroundColor: palette.tealSoft }]} />
+        ) : null}
         <View style={styles.mastheadInner}>
           {/* <Text style={styles.eyebrow}>LOKKHYO</Text> */}
 
           <View style={styles.identity}>
-            <Avatar name={fullName} photoUrl={profileData?.photoUrl} size={64} tone={isDark ? 'onPage' : 'onTeal'} />
+            <Avatar name={fullName} photoUrl={profileData?.photoUrl} size={80} tone="onPage" />
             <View style={styles.identityText}>
               <Text
                 style={[
                   styles.name,
-                  { color: isDark ? palette.ink : '#FFFFFF', fontFamily: fontFamily.displayBold },
+                  { color: palette.ink, fontFamily: fontFamily.displayBold },
                 ]}
                 numberOfLines={1}>
                 {fullName}
@@ -72,12 +80,18 @@ export default function ProfileScreen() {
                 <Text
                   style={[
                     styles.email,
-                    { color: isDark ? palette.muted : 'rgba(255,255,255,0.85)', fontFamily: fontFamily.regular },
+                    { color: palette.muted, fontFamily: fontFamily.regular },
                   ]}
                   numberOfLines={1}>
                   {email}
                 </Text>
               ) : null}
+              <Button
+                title="Edit profile"
+                variant="ghost"
+                onPress={() => router.push('/profile/edit')}
+                style={styles.editLink}
+              />
             </View>
           </View>
         </View>
@@ -174,11 +188,20 @@ export default function ProfileScreen() {
               try {
                 await signOut();
               } catch {
-                Alert.alert('Error', 'Failed to sign out. Please try again.');
+                setSignoutModalVisible(false);
+                setSignOutFailed(true);
               }
             },
           },
         ]}
+      />
+
+      <AppModal
+        visible={signOutFailed}
+        onClose={() => setSignOutFailed(false)}
+        title="Error"
+        body="Failed to sign out. Please try again."
+        actions={[{ title: 'OK', onPress: () => setSignOutFailed(false) }]}
       />
     </PageBackground>
   );
@@ -231,6 +254,11 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 28,
     borderBottomRightRadius: 28,
   },
+  mastheadTint: {
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    opacity: 0.5,
+  },
   mastheadInner: {
     paddingHorizontal: 20,
     paddingTop: 16,
@@ -256,6 +284,11 @@ const styles = StyleSheet.create({
   },
   email: {
     fontSize: 13,
+  },
+  editLink: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 0,
+    marginTop: 4,
   },
   editButton: {
     alignSelf: 'flex-start',

@@ -64,8 +64,8 @@ export function AppBlurView({
 
   const defaultOverlay = isDark
     ? blurs
-      ? 'rgba(15, 30, 36, 0.45)'
-      : 'rgba(15, 30, 36, 0.88)'
+      ? 'rgba(11, 13, 22, 0.45)'
+      : 'rgba(11, 13, 22, 0.88)'
     : blurs
       ? 'rgba(255, 255, 255, 0.45)'
       : 'rgba(255, 255, 255, 0.90)';
@@ -130,11 +130,11 @@ export function BlurredModal({
   const defaultAnim = placement === 'bottom' ? 'slide' : 'fade';
   const overlayBg = isDark
     ? isNativeBlurAvailable
-      ? 'rgba(15, 30, 36, 0.55)'
+      ? 'rgba(11, 13, 22, 0.55)'
       : 'rgba(0, 0, 0, 0.70)'
     : isNativeBlurAvailable
-      ? 'rgba(15, 30, 36, 0.35)'
-      : 'rgba(15, 30, 36, 0.50)';
+      ? 'rgba(11, 13, 22, 0.35)'
+      : 'rgba(11, 13, 22, 0.50)';
 
   return (
     <Modal

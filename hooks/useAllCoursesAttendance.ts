@@ -63,7 +63,7 @@ export function useAllCoursesAttendance(targetCourses?: Course[]) {
         ? generateSessionOccurrences(courseSlots, semester.startDate, semester.totalWeeks)
         : [];
       const sessions = mergeSessionsWithRecords(occurrences, records);
-      const stats = computeAttendanceStats(sessions);
+      const stats = computeAttendanceStats(sessions, { isLab: course.isLab });
       return { course, sessions, stats };
     });
   }, [courses, semesters, slots, attendanceQueries]);

@@ -1,9 +1,10 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 
 import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
+import { AppModal } from '@/components/ui/AppModal';
 import { Card, Divider } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { PageHeader } from '@/components/ui/PageHeader';
@@ -35,23 +36,33 @@ export default function RoutineScreen() {
 
   const today = getTodayOfWeek();
   const [selectedDay, setSelectedDay] = useState<number>(today);
+  const [confirm, setConfirm] = useState<{ title: string; body: string; action: string; onConfirm: () => void } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const askConfirm = (request: { title: string; body: string; action: string; onConfirm: () => void }) => {
+    setConfirm(request);
+    setConfirmOpen(true);
+  };
 
   const daySlots = slots
     .filter((s) => s.dayOfWeek === selectedDay)
     .sort((a, b) => parseTime(a.startTime) - parseTime(b.startTime));
 
   const handleDelete = (slotId: string, label: string) => {
-    Alert.alert('Remove class', `Remove ${label} from your ${DAY_NAMES[selectedDay]} routine?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Remove', style: 'destructive', onPress: () => deleteRoutineSlot.mutate(slotId) },
-    ]);
+    askConfirm({
+      title: 'Remove class',
+      body: `Remove ${label} from your ${DAY_NAMES[selectedDay]} routine?`,
+      action: 'Remove',
+      onConfirm: () => deleteRoutineSlot.mutate(slotId),
+    });
   };
 
   const handleDeleteUpcoming = (reminderId: string, name: string, courseId: string) => {
-    Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteUpcoming.mutate({ courseId, reminderId }) },
-    ]);
+    askConfirm({
+      title: 'Delete reminder',
+      body: `Remove the reminder for "${name}"?`,
+      action: 'Delete',
+      onConfirm: () => deleteUpcoming.mutate({ courseId, reminderId }),
+    });
   };
 
   return (
@@ -177,6 +188,24 @@ export default function RoutineScreen() {
           </Card>
         )}
       </ScrollView>
+
+      <AppModal
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={confirm?.title ?? ''}
+        body={confirm?.body}
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: () => setConfirmOpen(false) },
+          {
+            title: confirm?.action ?? 'Delete',
+            variant: 'destructive',
+            onPress: () => {
+              confirm?.onConfirm();
+              setConfirmOpen(false);
+            },
+          },
+        ]}
+      />
     </Wrapper>
   );
 }

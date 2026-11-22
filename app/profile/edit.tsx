@@ -2,7 +2,6 @@ import { useNavigation } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useEffect, useState } from 'react';
 import {
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -50,6 +49,12 @@ export default function EditProfileScreen() {
 
   const [photoModalVisible, setPhotoModalVisible] = useState(false);
   const [photoBusy, setPhotoBusy] = useState<'camera' | 'library' | null>(null);
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const showNotice = (title: string, body: string) => {
+    setNotice({ title, body });
+    setNoticeOpen(true);
+  };
 
   /** Seed the form from the cached profile once it arrives. */
   useEffect(() => {
@@ -148,7 +153,7 @@ export default function EditProfileScreen() {
       if (source === 'camera') {
         const camera = await ImagePicker.requestCameraPermissionsAsync();
         if (!camera.granted) {
-          Alert.alert('Camera access needed', 'Allow camera access so you can take a profile photo.');
+          showNotice('Camera access needed', 'Allow camera access so you can take a profile photo.');
           return;
         }
       }
@@ -162,7 +167,7 @@ export default function EditProfileScreen() {
       const asset = result.assets[0];
 
       if (asset.fileSize != null && asset.fileSize > MAX_PHOTO_BYTES) {
-        Alert.alert('Photo too large', 'Please choose an image under 3 MB.');
+        showNotice('Photo too large', 'Please choose an image under 3 MB.');
         return;
       }
 
@@ -174,7 +179,7 @@ export default function EditProfileScreen() {
       });
       ToastAndroid.show('Profile photo updated', 2000);
     } catch {
-      Alert.alert('Upload failed', 'Could not update your photo. Please try again.');
+      showNotice('Upload failed', 'Could not update your photo. Please try again.');
     } finally {
       setPhotoBusy(null);
       setPhotoModalVisible(false);
@@ -186,7 +191,7 @@ export default function EditProfileScreen() {
       await removePhoto.mutateAsync();
       ToastAndroid.show('Photo removed', 2000);
     } catch {
-      Alert.alert('Could not remove photo', 'Please try again.');
+      showNotice('Could not remove photo', 'Please try again.');
     } finally {
       setPhotoModalVisible(false);
     }
@@ -369,6 +374,14 @@ export default function EditProfileScreen() {
           />
         </ScrollView>
       </Wrapper>
+
+      <AppModal
+        visible={noticeOpen}
+        onClose={() => setNoticeOpen(false)}
+        title={notice?.title ?? ''}
+        body={notice?.body}
+        actions={[{ title: 'OK', onPress: () => setNoticeOpen(false) }]}
+      />
     </>
   );
 }

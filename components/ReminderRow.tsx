@@ -61,15 +61,15 @@ export function ReminderRow({ name, type, date, courseCode, reminderLine, highli
         <ThemedText style={tileMonthStyle}>{MONTH_NAMES[month - 1]?.slice(0, 3).toUpperCase()}</ThemedText>
       </View>
       <View style={textStyle}>
-        <ThemedText type="defaultSemiBold" numberOfLines={1}>
+        <ThemedText type="defaultSemiBold">
           {name}
         </ThemedText>
-        <ThemedText type="caption" numberOfLines={1}>
+        <ThemedText type="caption">
           {ASSESSMENT_TYPE_LABELS[type]}
           {courseCode ? ` · ${courseCode}` : ''} · {relativeDay(daysLeft)}
         </ThemedText>
         {reminderLine ? (
-          <ThemedText type="caption" color={palette.teal} numberOfLines={1}>
+          <ThemedText type="caption" color={palette.teal}>
             {reminderLine}
           </ThemedText>
         ) : null}

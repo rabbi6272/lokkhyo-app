@@ -291,7 +291,7 @@ export default function WhatIfSimulatorScreen() {
                           <ThemedText type="defaultSemiBold" style={{ fontSize: 15 }}>
                             {c.code} <Text style={[styles.small, { color: palette.muted }]}>· {c.credits} cr</Text>
                           </ThemedText>
-                          <ThemedText style={[styles.small, { color: palette.muted }]} numberOfLines={1}>
+                          <ThemedText style={[styles.small, { color: palette.muted }]}>
                             {c.title}
                           </ThemedText>
                         </View>

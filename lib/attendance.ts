@@ -35,6 +35,21 @@ const MARK_THRESHOLDS: { min: number; mark: number }[] = [
 
 export const EXAM_ELIGIBILITY_THRESHOLD = 50;
 
+/** Length of one class period. A 100-minute class is a double period. */
+export const PERIOD_MINUTES = 50;
+
+/**
+ * How many attendances one session counts as: whole periods in its length,
+ * never less than one. 50 min → 1, 100 min → 2, 150 min → 3.
+ * Lab courses skip this: one lab session is one attendance.
+ * Mirrors `slotPeriods` in `lokkhyo-server/lib/digest.ts`; keep them equal.
+ */
+export function slotPeriods(startTime: string, endTime: string): number {
+  const minutes = parseTime(endTime) - parseTime(startTime);
+  if (!Number.isFinite(minutes) || minutes <= 0) return 1;
+  return Math.max(1, Math.floor(minutes / PERIOD_MINUTES));
+}
+
 export function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
@@ -109,12 +124,6 @@ export function mergeSessionsWithRecords(
 }
 
 /**
- * Computes held/present/absent/cancelled counts and the resulting
- * attendance percentage, mark (0/7/8/9/10), and exam eligibility.
- * Future and unmarked sessions are excluded from the percentage; cancelled
- * sessions don't count against the student either way.
- */
-/**
  * Builds a 7-column month grid of date strings, padded with `null` for the
  * leading/trailing blanks before the 1st and after the last day of the month.
  */
@@ -132,10 +141,24 @@ export function buildMonthGrid(year: number, month: number): (string | null)[] {
   return cells;
 }
 
-export function computeAttendanceStats(sessions: AttendanceSession[]): AttendanceStats {
-  const cancelled = sessions.filter((s) => s.status === 'cancelled').length;
-  const present = sessions.filter((s) => !s.isFuture && s.status === 'present').length;
-  const absent = sessions.filter((s) => !s.isFuture && s.status === 'absent').length;
+/**
+ * Computes held/present/absent/cancelled counts and the resulting
+ * attendance percentage, mark (0/7/8/9/10), and exam eligibility.
+ * Future and unmarked sessions are excluded from the percentage; cancelled
+ * sessions don't count against the student either way.
+ */
+export function computeAttendanceStats(
+  sessions: AttendanceSession[],
+  { isLab = false }: { isLab?: boolean } = {},
+): AttendanceStats {
+  // Counts are in periods, so a double-period class counts as two attendances.
+  // A lab session is one attendance however long it runs (labs are 150 min).
+  const weight = (s: AttendanceSession) => (isLab ? 1 : slotPeriods(s.startTime, s.endTime));
+  const sum = (match: (s: AttendanceSession) => boolean) =>
+    sessions.reduce((total, s) => (match(s) ? total + weight(s) : total), 0);
+  const cancelled = sum((s) => s.status === 'cancelled');
+  const present = sum((s) => !s.isFuture && s.status === 'present');
+  const absent = sum((s) => !s.isFuture && s.status === 'absent');
   const held = present + absent;
   const percent = held > 0 ? Math.round((present / held) * 100) : 0;
   const mark = MARK_THRESHOLDS.find((t) => percent >= t.min)?.mark ?? 0;

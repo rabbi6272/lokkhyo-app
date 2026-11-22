@@ -38,7 +38,13 @@ export function useCreateSemester() {
   return useMutation({
     mutationFn: async (data: NewSemester) =>
       (await createSemester(toCreateSemesterInput(data))).id,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: semesterKeys.all }),
+    onSuccess: (_id, data) => {
+      void queryClient.invalidateQueries({ queryKey: semesterKeys.all });
+      // A term created with its official GPA moves the CGPA straight away.
+      if (data.recordedGpa != null) {
+        void queryClient.invalidateQueries({ queryKey: gradeKeys.all });
+      }
+    },
   });
 }
 

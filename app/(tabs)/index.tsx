@@ -2,12 +2,13 @@ import { useQueries, useQueryClient } from '@tanstack/react-query';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 
 import { AttendanceMeter } from '@/components/AttendanceMeter';
 import { CourseCard } from '@/components/CourseCard';
 import { ReminderRow } from '@/components/ReminderRow';
 import { ThemedText } from '@/components/ThemedText';
+import { AppModal } from '@/components/ui/AppModal';
 import { Blobs } from '@/components/ui/Blobs';
 import { Card, Divider } from '@/components/ui/Card';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -40,6 +41,12 @@ export default function HomeScreen() {
   const { palette, radius, space } = useTheme();
   const queryClient = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
+  const [confirm, setConfirm] = useState<{ title: string; body: string; action: string; onConfirm: () => void } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const askConfirm = (request: { title: string; body: string; action: string; onConfirm: () => void }) => {
+    setConfirm(request);
+    setConfirmOpen(true);
+  };
   const now = useMinuteClock();
 
   // Home screen presents at most 3 courses. Only query details for those 3 to
@@ -75,10 +82,12 @@ export default function HomeScreen() {
 
   const openCourse = (courseId: string) => router.push({ pathname: '/course/[id]', params: { id: courseId } });
   const confirmDeleteReminder = (reminderId: string, name: string, courseId: string) =>
-    Alert.alert('Delete reminder', `Remove the reminder for "${name}"?`, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteUpcoming.mutate({ courseId, reminderId }) },
-    ]);
+    askConfirm({
+      title: 'Delete reminder',
+      body: `Remove the reminder for "${name}"?`,
+      action: 'Delete',
+      onConfirm: () => deleteUpcoming.mutate({ courseId, reminderId }),
+    });
 
   return (
     <Wrapper>
@@ -112,7 +121,7 @@ export default function HomeScreen() {
               style={{ padding: space.lg + 4, gap: space.xs }}>
               <Blobs />
               <View style={styles.heroTop}>
-                <ThemedText type="eyebrow" color={palette.teal}>
+                <ThemedText type="eyebrow" color={palette.teal} style={styles.shrink} numberOfLines={1}>
                   {spotlight.live ? 'HAPPENING NOW' : `NEXT CLASS · ${spotlight.when.toUpperCase()}`}
                 </ThemedText>
                 <View
@@ -121,13 +130,13 @@ export default function HomeScreen() {
                     styles.pillOutlined,
                     { backgroundColor: palette.surface, borderColor: palette.line },
                   ]}>
-                  <ThemedText type="caption" color={palette.teal}>
+                  <ThemedText type="caption" color={palette.teal} numberOfLines={1}>
                     {spotlight.status}
                   </ThemedText>
                 </View>
               </View>
               <View style={[styles.heroRow, { gap: space.md, marginTop: space.xs }]}>
-                <ThemedText type="figure" color={palette.ink}>
+                <ThemedText type="figure" color={palette.ink} numberOfLines={1}>
                   {formatTime12h(spotlight.slot.startTime)}
                 </ThemedText>
                 <ThemedText type="heading" color={palette.ink} style={styles.shrink} numberOfLines={1}>
@@ -174,7 +183,7 @@ export default function HomeScreen() {
                       <ThemedText type="number" style={[styles.slotTime, { color: palette.teal }]}>
                         {formatTime12h(slot.startTime)}
                       </ThemedText>
-                      <ThemedText type="defaultSemiBold" style={styles.flex} numberOfLines={1}>
+                      <ThemedText type="defaultSemiBold" style={styles.flex}>
                         {slot.courseLabel}
                       </ThemedText>
                       {live ? (
@@ -259,6 +268,24 @@ export default function HomeScreen() {
           </>
         )}
       </ScrollView>
+
+      <AppModal
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={confirm?.title ?? ''}
+        body={confirm?.body}
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: () => setConfirmOpen(false) },
+          {
+            title: confirm?.action ?? 'Delete',
+            variant: 'destructive',
+            onPress: () => {
+              confirm?.onConfirm();
+              setConfirmOpen(false);
+            },
+          },
+        ]}
+      />
     </Wrapper>
   );
 }
@@ -291,7 +318,7 @@ const styles = StyleSheet.create({
   hero: { overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth },
   heroTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
   heroRow: { flexDirection: 'row', alignItems: 'baseline' },
-  pill: { paddingHorizontal: 10, paddingVertical: 3, borderRadius: 999 },
+  pill: { paddingHorizontal: 12, paddingVertical: 3, borderRadius: 999 },
   pillOutlined: { borderWidth: StyleSheet.hairlineWidth },
   listCard: { paddingVertical: 0 },
   slotRow: { flexDirection: 'row', alignItems: 'center' },

@@ -19,7 +19,7 @@ export function SectionHeader({ title, actionLabel, href, onAction, first }: Sec
   const action = onAction ?? (href ? () => router.push(href) : undefined);
   return (
     <View style={[styles.row, first && { marginTop: 0 }]}>
-      <ThemedText type="heading">{title}</ThemedText>
+      <ThemedText type="heading" numberOfLines={1}>{title}</ThemedText>
       {actionLabel && action ? <Button title={actionLabel} variant="ghost" onPress={action} /> : null}
     </View>
   );

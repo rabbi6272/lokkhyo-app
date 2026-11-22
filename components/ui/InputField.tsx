@@ -28,7 +28,7 @@ export function Field({ label, error, required, style, onFocus, onBlur, ...rest 
 
   return (
     <View style={styles.container(space)}>
-      <Text style={styles.label(palette, fontFamily)}>
+      <Text textBreakStrategy="simple" style={styles.label(palette, fontFamily)}>
         {label}
         {required && <Text style={styles.required(palette)}> *</Text>}
       </Text>
@@ -68,7 +68,7 @@ export function Field({ label, error, required, style, onFocus, onBlur, ...rest 
           </Pressable>
         )}
       </View>
-      {error && <Text style={styles.error(palette, fontFamily)}>{error}</Text>}
+      {error && <Text textBreakStrategy="simple" style={styles.error(palette, fontFamily)}>{error}</Text>}
     </View>
   );
 }

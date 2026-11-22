@@ -1,10 +1,11 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { BackStep } from '@/components/ui/BackStep';
 import { Button } from '@/components/ui/Button';
+import { Chip } from '@/components/ui/Chip';
 import { Field } from '@/components/ui/InputField';
 import { Section } from '@/components/ui/Section';
 import { Wrapper } from '@/components/ui/Wrapper';
@@ -22,8 +23,9 @@ function todayIso() {
 }
 
 /**
- * A new term. It becomes the current semester on save — that is what creating
- * one is for — so the server archives the previous term in the same request.
+ * A new term. A current term becomes the current semester on save, so the
+ * server archives the previous one. A past term is added archived with its
+ * official GPA, so earlier semesters count toward the CGPA.
  */
 export default function NewSemesterScreen() {
   const router = useRouter();
@@ -34,6 +36,9 @@ export default function NewSemesterScreen() {
   const [startDate, setStartDate] = useState(todayIso());
   const [totalWeeks, setTotalWeeks] = useState('13');
   const [targetGpa, setTargetGpa] = useState('');
+  const [isPast, setIsPast] = useState(false);
+  const [recordedGpa, setRecordedGpa] = useState('');
+  const [recordedCredits, setRecordedCredits] = useState('');
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -41,11 +46,19 @@ export default function NewSemesterScreen() {
     setSubmitError(null);
     const weeks = Number(totalWeeks);
     const gpa = Number(targetGpa);
+    const termGpa = Number(recordedGpa);
+    const termCredits = Number(recordedCredits);
     const next: Record<string, string | null> = {
       name: required(name, 'Semester name'),
       startDate: required(startDate, 'Start date') ?? isDate(startDate),
       totalWeeks: isNumeric(totalWeeks, 'Total weeks') ?? (weeks > 0 ? null : 'Total weeks must be positive.'),
-      targetGpa: targetGpa.trim() ? (Number.isNaN(gpa) ? 'Target GPA must be a number.' : gpaRange(gpa)) : null,
+      targetGpa:
+        !isPast && targetGpa.trim() ? (Number.isNaN(gpa) ? 'Target GPA must be a number.' : gpaRange(gpa)) : null,
+      recordedGpa: isPast ? (isNumeric(recordedGpa, 'GPA') ?? gpaRange(termGpa)) : null,
+      recordedCredits: isPast
+        ? (isNumeric(recordedCredits, 'Credits') ??
+          (termCredits > 0 && termCredits <= 60 ? null : 'Credits must be between 0 and 60.'))
+        : null,
     };
     setErrors(next);
     if (Object.values(next).some(Boolean)) return;
@@ -55,9 +68,10 @@ export default function NewSemesterScreen() {
         name: name.trim(),
         startDate: startDate.trim(),
         totalWeeks: weeks,
-        targetGpa: targetGpa.trim() ? gpa : 0,
+        targetGpa: !isPast && targetGpa.trim() ? gpa : 0,
+        ...(isPast ? { past: true, recordedGpa: termGpa, recordedCredits: termCredits } : {}),
       });
-      await activateSemester.mutateAsync(id);
+      if (!isPast) await activateSemester.mutateAsync(id);
       router.back();
     } catch (error) {
       setSubmitError(FirebaseError(error));
@@ -70,6 +84,10 @@ export default function NewSemesterScreen() {
       <Wrapper noTopMargin keyboardAvoiding style={styles.flex}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           <Section title="TERM">
+            <View style={styles.chips}>
+              <Chip label="Current semester" selected={!isPast} onPress={() => setIsPast(false)} />
+              <Chip label="Past semester" selected={isPast} onPress={() => setIsPast(true)} />
+            </View>
             <Field
               label="Semester name"
               placeholder="e.g. Fall 2026"
@@ -101,26 +119,59 @@ export default function NewSemesterScreen() {
               }}
               error={errors.totalWeeks}
             />
-            <Field
-              label="Target GPA (optional)"
-              placeholder="e.g. 3.80"
-              keyboardType="numeric"
-              value={targetGpa}
-              onChangeText={(v) => {
-                setTargetGpa(v);
-                setErrors((e) => ({ ...e, targetGpa: null }));
-              }}
-              error={errors.targetGpa}
-            />
+            {!isPast && (
+              <Field
+                label="Target GPA (optional)"
+                placeholder="e.g. 3.80"
+                keyboardType="numeric"
+                value={targetGpa}
+                onChangeText={(v) => {
+                  setTargetGpa(v);
+                  setErrors((e) => ({ ...e, targetGpa: null }));
+                }}
+                error={errors.targetGpa}
+              />
+            )}
           </Section>
 
+          {isPast && (
+            <Section title="RESULT">
+              <Field
+                label="GPA (out of 4.00)"
+                placeholder="e.g. 3.62"
+                keyboardType="decimal-pad"
+                value={recordedGpa}
+                onChangeText={(v) => {
+                  setRecordedGpa(v);
+                  setErrors((e) => ({ ...e, recordedGpa: null }));
+                }}
+                error={errors.recordedGpa}
+                required
+              />
+              <Field
+                label="Credits completed"
+                placeholder="e.g. 21"
+                keyboardType="decimal-pad"
+                value={recordedCredits}
+                onChangeText={(v) => {
+                  setRecordedCredits(v);
+                  setErrors((e) => ({ ...e, recordedCredits: null }));
+                }}
+                error={errors.recordedCredits}
+                required
+              />
+            </Section>
+          )}
+
           <ThemedText type="caption" style={styles.hint}>
-            The new term becomes your current semester; the previous one is archived and keeps its courses and grades.
+            {isPast
+              ? 'Enter the official GPA from your result sheet. It counts toward your CGPA; your current semester stays as it is.'
+              : 'The new term becomes your current semester; the previous one is archived and keeps its courses and grades.'}
           </ThemedText>
           {submitError ? <Text style={[styles.error, { color: palette.risk }]}>{submitError}</Text> : null}
 
           <Button
-            title="Create semester"
+            title={isPast ? 'Add past semester' : 'Create semester'}
             onPress={handleSubmit}
             loading={createSemester.isPending || activateSemester.isPending}
           />
@@ -134,5 +185,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: { paddingTop: Space.md, paddingBottom: Space.xxl, gap: Space.md },
   hint: { paddingHorizontal: Space.xs },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   error: { fontSize: 13, paddingHorizontal: Space.xs },
 });

@@ -1,7 +1,7 @@
 import { useQueries } from '@tanstack/react-query';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 
 import { CourseCard } from '@/components/CourseCard';
 import { ThemedText } from '@/components/ThemedText';
@@ -55,6 +55,18 @@ export default function SemesterDetailScreen() {
   const [gpaInput, setGpaInput] = useState('');
   const [creditsInput, setCreditsInput] = useState('');
   const [recordErrors, setRecordErrors] = useState<Record<string, string | null>>({});
+  const [confirm, setConfirm] = useState<{ title: string; body: string; action: string; onConfirm: () => void } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const askConfirm = (request: { title: string; body: string; action: string; onConfirm: () => void }) => {
+    setConfirm(request);
+    setConfirmOpen(true);
+  };
+  const [notice, setNotice] = useState<{ title: string; body: string } | null>(null);
+  const [noticeOpen, setNoticeOpen] = useState(false);
+  const showNotice = (title: string, body: string) => {
+    setNotice({ title, body });
+    setNoticeOpen(true);
+  };
 
   const openRecord = () => {
     if (!semester) return;
@@ -72,7 +84,10 @@ export default function SemesterDetailScreen() {
       { id: semester.id, data: { recordedGpa, recordedCredits } },
       {
         onSuccess: () => setRecordOpen(false),
-        onError: () => Alert.alert('Could not save', 'The GPA was not saved. Please try again.'),
+        onError: () => {
+          setRecordOpen(false);
+          showNotice('Could not save', 'The GPA was not saved. Please try again.');
+        },
       },
     );
   };
@@ -93,18 +108,17 @@ export default function SemesterDetailScreen() {
 
   const confirmDelete = () => {
     if (!semester) return;
-    Alert.alert(
-      'Delete semester',
-      termCourses.length === 0
-        ? `Delete "${semester.name}"?`
-        : `Delete "${semester.name}" and its ${termCourses.length} ${
-            termCourses.length === 1 ? 'course' : 'courses'
-          }? Attendance, CT marks and grades filed under them are removed too.`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Delete', style: 'destructive', onPress: () => deleteSemester.mutate(semester.id) },
-      ],
-    );
+    askConfirm({
+      title: 'Delete semester',
+      body:
+        termCourses.length === 0
+          ? `Delete "${semester.name}"?`
+          : `Delete "${semester.name}" and its ${termCourses.length} ${
+              termCourses.length === 1 ? 'course' : 'courses'
+            }? Attendance, CT marks and grades filed under them are removed too.`,
+      action: 'Delete',
+      onConfirm: () => deleteSemester.mutate(semester.id),
+    });
   };
 
   if (isLoading || isCoursesLoading) {
@@ -240,6 +254,32 @@ export default function SemesterDetailScreen() {
           required
         />
       </AppModal>
+
+      <AppModal
+        visible={confirmOpen}
+        onClose={() => setConfirmOpen(false)}
+        title={confirm?.title ?? ''}
+        body={confirm?.body}
+        actions={[
+          { title: 'Cancel', variant: 'secondary', onPress: () => setConfirmOpen(false) },
+          {
+            title: confirm?.action ?? 'Delete',
+            variant: 'destructive',
+            onPress: () => {
+              confirm?.onConfirm();
+              setConfirmOpen(false);
+            },
+          },
+        ]}
+      />
+
+      <AppModal
+        visible={noticeOpen}
+        onClose={() => setNoticeOpen(false)}
+        title={notice?.title ?? ''}
+        body={notice?.body}
+        actions={[{ title: 'OK', onPress: () => setNoticeOpen(false) }]}
+      />
     </>
   );
 }

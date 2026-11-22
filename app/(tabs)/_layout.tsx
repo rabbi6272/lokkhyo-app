@@ -17,7 +17,6 @@ const TABS = [
 
 export default function TabLayout() {
   const { palette, radius } = useTheme();
-  // One blur target per screen: the tab bar is a sibling of the screens, never inside the view it blurs.
   const targets = useRef(new Map<string, RefObject<View | null>>()).current;
   const targetFor = (key: string) => {
     if (!targets.has(key)) targets.set(key, createRef<View>());
@@ -31,7 +30,7 @@ export default function TabLayout() {
     right: 0,
     height: 72,
     paddingTop: 6,
-    backgroundColor: 'transparent',
+    backgroundColor: "#ffffff50",
     borderTopWidth: StyleSheet.hairlineWidth,
     borderTopColor: palette.line,
     elevation: 0,
@@ -52,9 +51,8 @@ export default function TabLayout() {
         tabBarInactiveTintColor: palette.faint,
         tabBarStyle: barStyle,
         tabBarBackground: () => (
-          <AppBlurView intensity={40} blurTarget={targetFor(route.key)} style={StyleSheet.absoluteFill} />
+          <AppBlurView intensity={40} blurTarget={targetFor(route.key)} style={[StyleSheet.absoluteFill, { backgroundColor: '#ffffff53' }]} />
         ),
-        // Icons only; `title` still names each tab for screen readers.
         tabBarShowLabel: false,
         tabBarIconStyle: styles.iconSlot,
       })}>
